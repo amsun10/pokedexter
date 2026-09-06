@@ -17,6 +17,18 @@ function getAudioContext(): AudioContext {
   return audioCtx;
 }
 
+// Global TTS Audio Element & Utterance
+let ttsAudio: HTMLAudioElement | null = null;
+let activeUtterance: SpeechSynthesisUtterance | null = null;
+
+function getTtsAudio(): HTMLAudioElement {
+  if (!ttsAudio) {
+    ttsAudio = new Audio();
+    ttsAudio.preload = 'auto';
+  }
+  return ttsAudio;
+}
+
 /**
  * Mobile Audio & Speech Unlocker (Crucial for iOS Safari & Android Chrome)
  */
@@ -28,12 +40,17 @@ export function unlockAudioAndSpeech() {
       ctx.resume();
     }
 
-    // Play a tiny silent buffer to warm up iOS hardware audio output
+    // Play a tiny silent buffer to warm up iOS Web Audio
     const buffer = ctx.createBuffer(1, 1, 22050);
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(ctx.destination);
     source.start(0);
+
+    // Warm up HTMLAudioElement for mobile timer playback
+    const audio = getTtsAudio();
+    audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+    audio.play().catch(() => {});
 
     // Warm up Web Speech API on user gesture for iOS Safari
     if ('speechSynthesis' in window) {
@@ -52,7 +69,7 @@ export function unlockAudioAndSpeech() {
   }
 }
 
-// Auto-attach unlock listeners on any first touch or click
+// Auto-attach unlock listeners on any touch or click
 if (typeof window !== 'undefined') {
   const globalUnlock = () => {
     unlockAudioAndSpeech();
@@ -161,7 +178,7 @@ export function playTypewriterBlip() {
 }
 
 /**
- * Radar / Scanning beep beep beep sound (Loud, unmistakable anime scanner)
+ * Radar / Scanning beep beep beep sound
  */
 export function playScanSound() {
   if (isMutedState) return;
@@ -318,7 +335,7 @@ export function playRevealFanfare() {
 }
 
 /**
- * Pokédex Chinese robotic speech narration
+ * Pokédex Chinese robotic speech narration (Dual Engine: Audio Stream + Web Speech Fallback)
  */
 let cachedVoices: SpeechSynthesisVoice[] = [];
 
@@ -330,12 +347,73 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
 }
 
 export function stopSpeaking() {
-  if ('speechSynthesis' in window) {
+  if (ttsAudio) {
     try {
-      window.speechSynthesis.cancel();
+      ttsAudio.pause();
+      ttsAudio.currentTime = 0;
     } catch {
       // ignore
     }
+  }
+  if ('speechSynthesis' in window) {
+    try {
+      if (activeUtterance) {
+        activeUtterance.onend = null;
+        activeUtterance.onerror = null;
+      }
+      window.speechSynthesis.cancel();
+      activeUtterance = null;
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function speakWithWebSpeech(speechText: string, onSpeakingChange?: (isSpeaking: boolean) => void) {
+  if (!('speechSynthesis' in window)) {
+    onSpeakingChange?.(false);
+    return;
+  }
+
+  try {
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+
+    const utterance = new SpeechSynthesisUtterance(speechText);
+    utterance.lang = 'zh-CN';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.05;
+
+    const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
+    const zhVoice = voices.find(
+      (v) => v.lang.startsWith('zh') || v.lang.includes('CN') || v.lang.includes('cmn')
+    );
+    if (zhVoice) {
+      utterance.voice = zhVoice;
+    }
+
+    // Keep global reference so browser garbage collector doesn't cut off speech
+    activeUtterance = utterance;
+
+    utterance.onstart = () => {
+      onSpeakingChange?.(true);
+    };
+
+    utterance.onend = () => {
+      activeUtterance = null;
+      onSpeakingChange?.(false);
+    };
+
+    utterance.onerror = () => {
+      activeUtterance = null;
+      onSpeakingChange?.(false);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.warn('Web Speech error:', e);
+    onSpeakingChange?.(false);
   }
 }
 
@@ -348,52 +426,46 @@ export function speakPokemonIntro(
     return;
   }
 
-  if (!('speechSynthesis' in window)) {
-    console.warn('Speech synthesis not supported on this device');
-    onSpeakingChange?.(false);
-    return;
-  }
-
-  if (window.speechSynthesis.paused) {
-    window.speechSynthesis.resume();
-  }
+  stopSpeaking();
 
   const formattedId = String(pokemon.id).padStart(3, '0');
   const typeText = pokemon.types.join('和');
   const speechText = `发现宝可梦！${formattedId}号，${pokemon.name}。${pokemon.genus}，${typeText}属性。${pokemon.description}`;
 
-  const utterance = new SpeechSynthesisUtterance(speechText);
-  utterance.lang = 'zh-CN';
-  utterance.rate = 1.0;
-  utterance.pitch = 1.05;
-
-  const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
-  const zhVoice = voices.find(
-    (v) => v.lang.startsWith('zh') || v.lang.includes('CN') || v.lang.includes('cmn')
-  );
-  if (zhVoice) {
-    utterance.voice = zhVoice;
-  }
-
-  utterance.onstart = () => {
-    onSpeakingChange?.(true);
-  };
-
-  utterance.onend = () => {
-    onSpeakingChange?.(false);
-  };
-
-  utterance.onerror = () => {
-    onSpeakingChange?.(false);
-  };
-
+  // Primary: Online Audio TTS Stream (Works reliably inside mobile timer callbacks & in silent mode)
   try {
-    window.speechSynthesis.cancel();
-    setTimeout(() => {
-      window.speechSynthesis.speak(utterance);
-    }, 60);
+    const audio = getTtsAudio();
+    const ttsUrl = `https://fanyi.baidu.com/gettts?lan=zh&text=${encodeURIComponent(speechText)}&spd=5&source=web`;
+
+    let audioCompleted = false;
+    audio.src = ttsUrl;
+    audio.volume = 1.0;
+
+    audio.onplay = () => {
+      onSpeakingChange?.(true);
+    };
+
+    audio.onended = () => {
+      audioCompleted = true;
+      onSpeakingChange?.(false);
+    };
+
+    audio.onerror = () => {
+      if (!audioCompleted) {
+        // Fallback to local Web Speech API
+        speakWithWebSpeech(speechText, onSpeakingChange);
+      }
+    };
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((err) => {
+        console.warn('TTS audio play failed, falling back to Web Speech:', err);
+        speakWithWebSpeech(speechText, onSpeakingChange);
+      });
+    }
   } catch {
-    window.speechSynthesis.speak(utterance);
+    speakWithWebSpeech(speechText, onSpeakingChange);
   }
 }
 
