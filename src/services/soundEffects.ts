@@ -25,6 +25,7 @@ function getTtsAudio(): HTMLAudioElement {
   if (!ttsAudio) {
     ttsAudio = new Audio();
     ttsAudio.preload = 'auto';
+    ttsAudio.setAttribute('referrerpolicy', 'no-referrer');
   }
   return ttsAudio;
 }
@@ -435,6 +436,7 @@ export function speakPokemonIntro(
   // Primary: Online Audio TTS Stream (Works reliably inside mobile timer callbacks & in silent mode)
   try {
     const audio = getTtsAudio();
+    audio.setAttribute('referrerpolicy', 'no-referrer');
     const ttsUrl = `https://fanyi.baidu.com/gettts?lan=zh&text=${encodeURIComponent(speechText)}&spd=5&source=web`;
 
     let audioCompleted = false;
