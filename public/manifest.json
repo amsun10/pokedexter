@@ -1,0 +1,24 @@
+{
+  "name": "宝可梦图鉴探测器",
+  "short_name": "宝可梦图鉴",
+  "description": "关东地区151宝可梦玩偶图鉴探测器",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#09090b",
+  "theme_color": "#DC0A2D",
+  "icons": [
+    {
+      "src": "./apple-touch-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

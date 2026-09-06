@@ -1,12 +1,18 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#DC0A2D" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="apple-mobile-web-app-title" content="宝可梦图鉴" />
+    <meta name="application-name" content="宝可梦图鉴" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#DC0A2D" />
     <title>宝可梦图鉴探测器 - Kanto Pokédex</title>
     <!-- Google Fonts for Retro Digital Display -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +20,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700;800&family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   </head>
   <body class="bg-zinc-950 text-white select-none overflow-y-auto touch-manipulation min-h-screen">
-    <div id="root" class="min-h-screen w-full flex flex-col items-center justify-start sm:justify-center"></div>
+    <div id="root" class="min-h-[100dvh] w-full flex flex-col"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -91,7 +91,7 @@ export const PokedexChassis: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-md sm:max-w-lg mx-auto flex flex-col items-center">
+    <div className="w-full max-w-md sm:max-w-lg mx-auto flex flex-col items-center my-auto">
       {/* Outer Kanto Pokedex Shell */}
       <div className="w-full bg-gradient-to-b from-red-600 via-red-600 to-red-700 rounded-3xl p-3 sm:p-4 border-4 border-red-800 shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_4px_6px_rgba(255,255,255,0.4)] flex flex-col justify-between relative overflow-hidden">
         {/* Subtle bevel line highlighting top lid */}
