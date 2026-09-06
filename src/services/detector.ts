@@ -9,9 +9,6 @@ export interface DetectionResult {
   source: 'camera' | 'upload' | 'quick-select';
 }
 
-/**
- * Extract dominant RGB color from the center area of a canvas/video
- */
 export interface ColorAnalysis {
   r: number;
   g: number;
@@ -21,10 +18,34 @@ export interface ColorAnalysis {
   hue: number;
   variance: number;
   vibrantRatio: number;
+  // Specific color bucket ratios
+  yellowRatio: number;
+  orangeRedRatio: number;
+  blueCyanRatio: number;
+  greenTealRatio: number;
+  purpleRatio: number;
+  pinkRatio: number;
+  brownRatio: number;
+}
+
+export function getStoredGeminiKey(): string {
+  try {
+    return localStorage.getItem('pokedex_gemini_key') || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setStoredGeminiKey(key: string): void {
+  try {
+    localStorage.setItem('pokedex_gemini_key', key.trim());
+  } catch {
+    // ignore
+  }
 }
 
 /**
- * Extract color profile, variance, and vibrancy from the reticle area
+ * High-precision foreground color clustering and pixel distribution analysis
  */
 export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
   const ctx = canvas.getContext('2d');
@@ -38,6 +59,13 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
       hue: 45,
       variance: 30,
       vibrantRatio: 0.5,
+      yellowRatio: 0.5,
+      orangeRedRatio: 0,
+      blueCyanRatio: 0,
+      greenTealRatio: 0,
+      purpleRatio: 0,
+      pinkRatio: 0,
+      brownRatio: 0,
     };
   }
 
@@ -57,6 +85,14 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
   let vibrantCount = 0;
   const brightnessSamples: number[] = [];
 
+  let yellowCount = 0;
+  let orangeRedCount = 0;
+  let blueCyanCount = 0;
+  let greenTealCount = 0;
+  let purpleCount = 0;
+  let pinkCount = 0;
+  let brownCount = 0;
+
   // Sample every 4th pixel for performance
   for (let i = 0; i < data.length; i += 16) {
     const r = data[i];
@@ -68,9 +104,10 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
     const maxC = Math.max(r, g, b);
     const minC = Math.min(r, g, b);
     const sat = maxC === 0 ? 0 : (maxC - minC) / maxC;
+    const gr = g / (r || 1);
+    const br = b / (r || 1);
 
-    // Count pixels with distinct coloration
-    if (sat > 0.22 && bri > 35 && bri < 235) {
+    if (sat > 0.20 && bri > 35 && bri < 238) {
       vibrantCount++;
     }
 
@@ -80,12 +117,46 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
       totalB += b;
       count++;
     }
+
+    // High-precision color bucket classification
+    if (sat >= 0.20 && bri > 35 && bri < 240) {
+      // 1. Bright Yellow (Pikachu, Psyduck):
+      // Crucial: Under warm/indoor lighting, yellow shifts towards amber/orange,
+      // but G/R is ALWAYS >= 0.72 and (R+G)/2 is high!
+      if (r > 130 && g > 95 && gr >= 0.72 && br <= 0.55 && sat >= 0.26) {
+        yellowCount++;
+      }
+      // 2. Orange/Red (Charmander, Charizard):
+      else if (r > 125 && gr >= 0.20 && gr < 0.72 && br <= 0.50 && sat >= 0.28) {
+        orangeRedCount++;
+      }
+      // 3. Cyan / Blue (Squirtle):
+      else if (b > 85 && b > r * 1.15 && g > r * 0.75) {
+        blueCyanCount++;
+      }
+      // 4. Teal / Green (Bulbasaur):
+      else if (g > 85 && g > r * 1.05 && g > b * 1.02) {
+        greenTealCount++;
+      }
+      // 5. Purple / Violet (Gengar):
+      else if (r > 70 && b > 75 && g < Math.min(r, b) * 0.75) {
+        purpleCount++;
+      }
+      // 6. Pink (Jigglypuff, Clefairy, Mew):
+      else if (r > 130 && g > 85 && b > 100 && r > g * 1.12 && r > b * 1.05 && bri > 90) {
+        pinkCount++;
+      }
+      // 7. Warm Brown (Eevee):
+      // Darker, warm, G/R is strictly between 0.42 and 0.71, brightness < 155.
+      else if (r > 90 && g > 50 && gr < 0.72 && gr >= 0.42 && br <= 0.55 && bri < 155 && sat >= 0.24) {
+        brownCount++;
+      }
+    }
   }
 
   const sampleSize = brightnessSamples.length || 1;
   const vibrantRatio = vibrantCount / sampleSize;
 
-  // Calculate standard deviation / variance
   let briSum = 0;
   for (const b of brightnessSamples) briSum += b;
   const avgBrightness = briSum / sampleSize;
@@ -106,6 +177,13 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
       hue: 0,
       variance: 0,
       vibrantRatio: 0,
+      yellowRatio: 0,
+      orangeRedRatio: 0,
+      blueCyanRatio: 0,
+      greenTealRatio: 0,
+      purpleRatio: 0,
+      pinkRatio: 0,
+      brownRatio: 0,
     };
   }
 
@@ -141,22 +219,30 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
     hue,
     variance,
     vibrantRatio,
+    yellowRatio: yellowCount / sampleSize,
+    orangeRedRatio: orangeRedCount / sampleSize,
+    blueCyanRatio: blueCyanCount / sampleSize,
+    greenTealRatio: greenTealCount / sampleSize,
+    purpleRatio: purpleCount / sampleSize,
+    pinkRatio: pinkCount / sampleSize,
+    brownRatio: brownCount / sampleSize,
   };
 }
 
 /**
- * Smart heuristic classifier for Pokemon plush toys & cards
+ * Smart heuristic classifier with distinct foreground color discrimination
  * Returns null if no known Pokémon features are detected
  */
 export async function detectPokemonFromImage(
   canvas: HTMLCanvasElement,
   apiKey?: string
 ): Promise<DetectionResult | null> {
-  // If user provided a Gemini / Vision API key, we can make a vision API call
-  if (apiKey && apiKey.trim().length > 15) {
+  // If user provided or stored a Gemini Vision API key, call vision API
+  const effectiveKey = (apiKey || '').trim() || getStoredGeminiKey();
+  if (effectiveKey.length > 15) {
     try {
-      const apiResult = await callGeminiVisionAPI(canvas, apiKey.trim());
-      if (apiResult) {
+      const apiResult = await callGeminiVisionAPI(canvas, effectiveKey);
+      if (apiResult !== undefined) {
         return apiResult;
       }
     } catch (e) {
@@ -166,85 +252,84 @@ export async function detectPokemonFromImage(
 
   // Local color & shape heuristic classifier
   const colorData = analyzeCanvasColors(canvas);
-  const { hue, saturation, brightness, variance, vibrantRatio } = colorData;
+  const {
+    brightness,
+    variance,
+    vibrantRatio,
+    yellowRatio,
+    orangeRedRatio,
+    blueCyanRatio,
+    greenTealRatio,
+    purpleRatio,
+    pinkRatio,
+    brownRatio,
+    hue,
+  } = colorData;
 
   // 1. Extreme rejection filters (pure dark, blown-out white, flat featureless surfaces)
-  if (brightness < 32) {
-    // Too dark or lens covered
-    return null;
-  }
-  if (brightness > 238 && saturation < 0.12) {
-    // Overexposed / ceiling lamp / blank bright sky
-    return null;
-  }
-  if (variance < 11) {
-    // Flat monochromatic plane (blank wall, monochrome sheet of paper)
-    return null;
-  }
-  if (saturation < 0.15 && vibrantRatio < 0.12) {
-    // Neutral monochrome scene (gray table, black keyboard, white background)
+  if (brightness < 32 || (brightness > 238 && vibrantRatio < 0.10) || variance < 10 || vibrantRatio < 0.10) {
     return null;
   }
 
   const scores: { id: number; score: number }[] = [];
 
-  // Match against iconic Gen 1 Pokémon plush toys
-  // Pikachu (#25) / Psyduck (#54) / Raichu (#26) / Jolteon (#135): Bright Yellow
-  if (hue >= 38 && hue <= 66 && saturation >= 0.28 && vibrantRatio >= 0.15) {
-    scores.push({ id: 25, score: 0.95 }); // Pikachu
-    scores.push({ id: 54, score: 0.78 }); // Psyduck
+  // 2. Multi-bucket foreground color evaluation (avoids mixing Pikachu with brown furniture)
+
+  // Match: Priority 1 - Pikachu & Yellow Pokémon (Pikachu, Psyduck, Raichu, Jolteon)
+  // Even if sitting on a brown desk, yellowRatio > 0.10 and yellowRatio >= brownRatio
+  if (yellowRatio >= 0.10 && (yellowRatio >= brownRatio || yellowRatio >= 0.15)) {
+    scores.push({ id: 25, score: 0.96 }); // Pikachu
+    scores.push({ id: 54, score: 0.80 }); // Psyduck
     scores.push({ id: 26, score: 0.72 }); // Raichu
-    scores.push({ id: 135, score: 0.65 }); // Jolteon
+    scores.push({ id: 135, score: 0.68 }); // Jolteon
   }
-  // Charmander (#4) / Charizard (#6) / Flareon (#136) / Dragonite (#149): Orange-Red
-  else if (hue >= 10 && hue <= 37 && saturation >= 0.32 && vibrantRatio >= 0.15) {
-    scores.push({ id: 4, score: 0.93 });  // Charmander
+  // Match: Priority 2 - Charmander & Orange-Red Pokémon (Charmander, Charizard, Flareon)
+  else if (orangeRedRatio >= 0.12 && orangeRedRatio >= brownRatio) {
+    scores.push({ id: 4, score: 0.94 });  // Charmander
     scores.push({ id: 6, score: 0.85 });  // Charizard
     scores.push({ id: 136, score: 0.75 }); // Flareon
     scores.push({ id: 149, score: 0.70 }); // Dragonite
   }
-  // Squirtle (#7) / Blastoise (#9) / Lapras (#131) / Vaporeon (#134): Light Blue / Cyan
-  else if (hue >= 180 && hue <= 235 && saturation >= 0.25 && vibrantRatio >= 0.14) {
-    scores.push({ id: 7, score: 0.92 });  // Squirtle
+  // Match: Priority 3 - Squirtle & Water Pokémon (Squirtle, Blastoise, Lapras)
+  else if (blueCyanRatio >= 0.12) {
+    scores.push({ id: 7, score: 0.93 });  // Squirtle
     scores.push({ id: 9, score: 0.82 });  // Blastoise
     scores.push({ id: 131, score: 0.78 }); // Lapras
     scores.push({ id: 134, score: 0.72 }); // Vaporeon
   }
-  // Bulbasaur (#1) / Ivysaur (#2) / Caterpie (#10): Teal / Cyan-Green
-  else if (hue >= 125 && hue <= 178 && saturation >= 0.20 && vibrantRatio >= 0.14) {
+  // Match: Priority 4 - Bulbasaur & Grass Pokémon (Bulbasaur, Ivysaur, Caterpie)
+  else if (greenTealRatio >= 0.12) {
     scores.push({ id: 1, score: 0.94 });  // Bulbasaur
     scores.push({ id: 2, score: 0.80 });  // Ivysaur
     scores.push({ id: 3, score: 0.76 });  // Venusaur
     scores.push({ id: 10, score: 0.70 }); // Caterpie
   }
-  // Gengar (#94) / Haunter (#93) / Gastly (#92): Purple / Magenta
-  else if (hue >= 255 && hue <= 310 && saturation >= 0.18 && vibrantRatio >= 0.12) {
+  // Match: Priority 5 - Gengar & Ghost Pokémon (Gengar, Haunter, Gastly)
+  else if (purpleRatio >= 0.10) {
     scores.push({ id: 94, score: 0.93 }); // Gengar
     scores.push({ id: 93, score: 0.80 }); // Haunter
     scores.push({ id: 92, score: 0.75 }); // Gastly
     scores.push({ id: 150, score: 0.70 }); // Mewtwo
   }
-  // Jigglypuff (#39) / Clefairy (#35) / Mew (#151): Pink
-  else if ((hue > 322 || hue < 10) && saturation >= 0.18 && brightness >= 85 && vibrantRatio >= 0.13) {
-    scores.push({ id: 39, score: 0.91 }); // Jigglypuff
+  // Match: Priority 6 - Jigglypuff & Fairy Pokémon (Jigglypuff, Mew, Clefairy)
+  else if (pinkRatio >= 0.12) {
+    scores.push({ id: 39, score: 0.92 }); // Jigglypuff
     scores.push({ id: 151, score: 0.85 }); // Mew
     scores.push({ id: 35, score: 0.75 }); // Clefairy
     scores.push({ id: 132, score: 0.70 }); // Ditto
   }
-  // Snorlax (#143): Dark Cyan-Navy plush with Cream accents
-  else if (hue >= 165 && hue <= 225 && saturation >= 0.18 && brightness >= 45 && brightness <= 140 && variance >= 16) {
+  // Match: Priority 7 - Eevee (Warm Brown plush with contrasting collar, variance >= 20, brown dominates)
+  else if (brownRatio >= 0.16 && brownRatio > yellowRatio * 1.5 && variance >= 20) {
+    scores.push({ id: 133, score: 0.90 }); // Eevee
+    scores.push({ id: 52, score: 0.75 });  // Meowth
+  }
+  // Match: Snorlax (Dark Navy/Cyan body + cream belly)
+  else if (hue >= 165 && hue <= 225 && brightness >= 45 && brightness <= 140 && variance >= 16) {
     scores.push({ id: 143, score: 0.92 }); // Snorlax
     scores.push({ id: 7, score: 0.70 });   // Squirtle
   }
-  // Eevee (#133): Warm Brown / Tan plush (requires toy contrast and saturation, avoids plain wood tables)
-  else if (hue >= 20 && hue <= 42 && saturation >= 0.25 && saturation <= 0.65 && brightness >= 50 && brightness <= 165 && variance >= 22 && vibrantRatio >= 0.16) {
-    scores.push({ id: 133, score: 0.90 }); // Eevee
-    scores.push({ id: 52, score: 0.75 });  // Meowth
-    scores.push({ id: 25, score: 0.65 });  // Pikachu
-    scores.push({ id: 143, score: 0.60 }); // Snorlax
-  }
 
-  // If no category matched or scores empty: No Pokémon found!
+  // If no category matched: No Pokémon found!
   if (scores.length === 0) {
     return null;
   }
@@ -276,35 +361,45 @@ export async function detectPokemonFromImage(
 async function callGeminiVisionAPI(
   canvas: HTMLCanvasElement,
   apiKey: string
-): Promise<DetectionResult | null> {
+): Promise<DetectionResult | null | undefined> {
   const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
   
-  const prompt = `You are a Pokemon Pokedex scanner. Identify which Pokemon is in this image (toy, plush, card, or screen). Return ONLY valid JSON with this format: {"pokemonId": number between 1 and 151, "confidence": number between 50 and 99, "reason": "brief reason"}. If unsure, pick the closest Gen 1 Pokemon.`;
+  const prompt = `You are a Pokemon Pokedex scanner. Look at this image and identify which Gen 1 Pokemon (#1 to #151) is present (such as plush toy, card, drawing, figure).
+Return ONLY valid JSON with no markdown formatting:
+If a Pokemon is detected: {"found": true, "pokemonId": number between 1 and 151, "confidence": number between 70 and 99}
+If NO Pokemon is in the image (e.g. random furniture, person, keyboard, wall, coffee mug): {"found": false}`;
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { text: prompt },
-          { inline_data: { mime_type: 'image/jpeg', data: base64Data } }
-        ]
-      }]
-    })
-  });
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: 'image/jpeg', data: base64Data } }
+          ]
+        }]
+      })
+    }
+  );
 
-  if (!response.ok) return null;
+  if (!response.ok) return undefined;
 
   const data = await response.json();
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) return null;
+  if (!text) return undefined;
 
   // Extract JSON from response
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return null;
+  if (!jsonMatch) return undefined;
 
   const parsed = JSON.parse(jsonMatch[0]);
+  if (parsed.found === false) {
+    return null; // Explicitly no Pokemon found
+  }
+
   const pId = Number(parsed.pokemonId);
   if (pId >= 1 && pId <= 151) {
     const target = getPokemonById(pId);
@@ -316,5 +411,5 @@ async function callGeminiVisionAPI(
     };
   }
 
-  return null;
+  return undefined;
 }

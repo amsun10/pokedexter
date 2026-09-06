@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Smartphone, X, Copy, Check, Wifi, Share2 } from 'lucide-react';
+import { getStoredGeminiKey, setStoredGeminiKey } from '../services/detector';
 
 interface LANModalProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface LANModalProps {
 
 export const LANModal: React.FC<LANModalProps> = ({ isOpen, onClose }) => {
   const [copied, setCopied] = useState(false);
+  const [apiKey, setApiKey] = useState(getStoredGeminiKey());
 
   if (!isOpen) return null;
 
@@ -73,6 +75,31 @@ export const LANModal: React.FC<LANModalProps> = ({ isOpen, onClose }) => {
                 在手机浏览器菜单中选择<span className="text-yellow-300 font-bold">【添加到主屏幕】</span>，即可去掉浏览器网址栏，变成全屏掌机图鉴！
               </p>
             </div>
+          </div>
+
+          {/* Optional Gemini Vision AI Key */}
+          <div className="bg-gradient-to-r from-purple-950/40 to-indigo-950/40 p-3 rounded-xl border border-purple-800/60 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-purple-300 font-bold text-xs flex items-center">
+                ✨ AI 视觉增强识别 (可选)
+              </span>
+              {apiKey && (
+                <span className="text-[10px] text-emerald-400 font-tech">已启用 AI</span>
+              )}
+            </div>
+            <p className="text-[10px] text-zinc-400">
+              输入 Google Gemini API Key 可开启超高精度多模态 AI 识别，准确分辨各种玩偶姿态与卡片（可在 aistudio.google.com 免费获取）：
+            </p>
+            <input
+              type="password"
+              placeholder="粘贴 AI Studio API Key..."
+              value={apiKey}
+              onChange={(e) => {
+                setApiKey(e.target.value);
+                setStoredGeminiKey(e.target.value);
+              }}
+              className="w-full bg-black/60 border border-purple-700/60 rounded-lg px-2.5 py-1.5 text-xs text-purple-200 placeholder:text-zinc-600 focus:outline-none focus:border-purple-400"
+            />
           </div>
         </div>
 
