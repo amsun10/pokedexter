@@ -38,6 +38,7 @@ export const WhosThatPokemon: React.FC<WhosThatPokemonProps> = ({
   const startTypewriter = () => {
     if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
     setDisplayedCharCount(0);
+    onSpeakingChange(true);
 
     let current = 0;
     typeIntervalRef.current = setInterval(() => {
@@ -47,6 +48,7 @@ export const WhosThatPokemon: React.FC<WhosThatPokemonProps> = ({
 
       if (current >= fullIntroText.length) {
         if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
+        onSpeakingChange(false);
       }
     }, 55);
   };
@@ -56,6 +58,7 @@ export const WhosThatPokemon: React.FC<WhosThatPokemonProps> = ({
     if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
     setDisplayedCharCount(fullIntroText.length);
     triggerHaptic('click');
+    onSpeakingChange(false);
   };
 
   // Trigger reveal sequence

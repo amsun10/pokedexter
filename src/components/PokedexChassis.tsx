@@ -104,7 +104,11 @@ export const PokedexChassis: React.FC = () => {
             <div className="relative p-1.5 rounded-full bg-gradient-to-b from-zinc-200 to-zinc-400 shadow-md">
               <div
                 className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full lens-blue transition-all duration-300 relative overflow-hidden flex items-center justify-center ${
-                  scanState === 'scanning' || isSpeaking ? 'lens-blue-pulse' : ''
+                  isSpeaking
+                    ? 'lens-speaking-pulse'
+                    : scanState === 'scanning'
+                    ? 'lens-blue-pulse'
+                    : ''
                 }`}
               >
                 {/* Internal Lens Reflections */}
@@ -113,33 +117,45 @@ export const PokedexChassis: React.FC = () => {
                 {scanState === 'scanning' && (
                   <div className="w-3 h-3 rounded-full bg-white animate-ping" />
                 )}
+                {isSpeaking && (
+                  <div className="w-5 h-5 rounded-full bg-cyan-200/70 animate-ping" />
+                )}
               </div>
             </div>
 
-            {/* Three Status LED Lights (Red, Yellow, Green) */}
+            {/* Three Status LED Lights (Red, Yellow, Green) with Anime Speech Chase Effect */}
             <div className="flex items-center space-x-2">
               {/* Red LED */}
               <div
+                title="红色状态指示灯"
                 className={`w-3.5 h-3.5 rounded-full border border-black/40 shadow-sm transition-all ${
-                  scanState === 'scanning'
+                  isSpeaking
+                    ? 'led-speech-red'
+                    : scanState === 'scanning'
                     ? 'bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse'
-                    : 'bg-red-800'
+                    : 'bg-red-900/80'
                 }`}
               />
               {/* Yellow LED */}
               <div
+                title="黄色状态指示灯"
                 className={`w-3.5 h-3.5 rounded-full border border-black/40 shadow-sm transition-all ${
-                  scanState === 'silhouette'
+                  isSpeaking
+                    ? 'led-speech-yellow'
+                    : scanState === 'silhouette'
                     ? 'bg-yellow-400 shadow-[0_0_8px_#facc15] animate-bounce'
-                    : 'bg-yellow-700'
+                    : 'bg-yellow-900/80'
                 }`}
               />
               {/* Green LED */}
               <div
+                title="绿色状态指示灯"
                 className={`w-3.5 h-3.5 rounded-full border border-black/40 shadow-sm transition-all ${
-                  scanState === 'revealed'
+                  isSpeaking
+                    ? 'led-speech-green'
+                    : scanState === 'revealed'
                     ? 'bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse'
-                    : 'bg-emerald-800'
+                    : 'bg-emerald-950'
                 }`}
               />
             </div>
