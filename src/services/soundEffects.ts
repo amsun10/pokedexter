@@ -255,7 +255,7 @@ export function playLockOnSound() {
 }
 
 /**
- * Low tactical buzzer sound when no Pokémon match is found
+ * Whimsical playful sound when a Pokémon slips away into the grass
  */
 export function playScanFailedSound() {
   if (isMutedState) return;
@@ -266,23 +266,26 @@ export function playScanFailedSound() {
 
     const now = ctx.currentTime;
 
-    // Two low descending buzzer tones (320Hz -> 160Hz)
-    [0, 0.16].forEach((timeOffset) => {
+    // Playful cartoon mystery notes (cute bounce: G4 -> E4 -> C4)
+    [
+      { f: 392.00, t: 0, d: 0.12 },
+      { f: 329.63, t: 0.12, d: 0.12 },
+      { f: 261.63, t: 0.24, d: 0.22 },
+    ].forEach((n) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(320, now + timeOffset);
-      osc.frequency.exponentialRampToValueAtTime(160, now + timeOffset + 0.12);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(n.f, now + n.t);
 
-      gain.gain.setValueAtTime(0.3, now + timeOffset);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.12);
+      gain.gain.setValueAtTime(0.25, now + n.t);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + n.t + n.d);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
-      osc.start(now + timeOffset);
-      osc.stop(now + timeOffset + 0.12);
+      osc.start(now + n.t);
+      osc.stop(now + n.t + n.d);
     });
   } catch (e) {
     console.warn('Audio scan failed error:', e);
@@ -534,7 +537,7 @@ export function speakNotFoundMessage(onSpeakingChange?: (isSpeaking: boolean) =>
 
   stopSpeaking();
   const speechId = currentSpeechId;
-  const speechText = '图鉴数据库未检索到宝可梦数据，请对准玩偶正面重新扫描。';
+  const speechText = '哎呀，宝可梦悄悄躲起来啦！快把玩偶靠近一点，我们再找找看吧！';
 
   const hasSpeechSynthesis = typeof window !== 'undefined' && 'speechSynthesis' in window;
 

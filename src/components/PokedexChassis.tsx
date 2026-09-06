@@ -297,21 +297,20 @@ export const PokedexChassis: React.FC = () => {
         </div>
 
         {/* ===================== CONTROL DECK ===================== */}
-        <div className="bg-red-700/80 rounded-2xl p-3 border border-red-800 shadow-inner flex flex-col gap-3">
-          {/* Main Controls Row */}
-          <div className="flex items-center justify-between gap-3">
-            {/* Retro Black D-Pad */}
-            <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center flex-shrink-0">
-              {/* Vertical bar */}
-              <div className="absolute w-6 sm:w-7 h-20 sm:h-24 bg-zinc-900 rounded-md border-2 border-black shadow-[0_3px_0_#18181b]" />
-              {/* Horizontal bar */}
-              <div className="absolute h-6 sm:h-7 w-20 sm:w-24 bg-zinc-900 rounded-md border-2 border-black shadow-[0_3px_0_#18181b]" />
-              {/* Center thumb depression */}
-              <div className="absolute w-5 h-5 rounded-full bg-zinc-800 border border-zinc-700" />
-            </div>
+        <div className="mt-3 bg-red-700/80 rounded-2xl p-2.5 sm:p-3 border border-red-800 shadow-inner">
+          <div className="flex items-center justify-between gap-2.5 sm:gap-3">
+            {/* Left Action: Reset to Camera */}
+            <button
+              onClick={handleResetScanner}
+              title="重置回扫描镜头"
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-zinc-700 to-zinc-800 hover:from-zinc-600 hover:to-zinc-700 text-zinc-200 flex flex-col items-center justify-center border-2 border-zinc-600 shadow-[0_3px_0_#27272a] active:shadow-none active:translate-y-0.5 transition active:scale-95 flex-shrink-0"
+            >
+              <RotateCcw className="w-5 h-5 sm:w-5 sm:h-5" />
+              <span className="font-tech text-[9px] sm:text-[10px] mt-0.5">重置</span>
+            </button>
 
-            {/* Giant "扫描" Shutter Button */}
-            {activeTab === 'detector' && (
+            {/* Center: Giant Hero "扫描" Shutter Button */}
+            {activeTab === 'detector' ? (
               <button
                 onClick={
                   scanState === 'revealed' || scanState === 'error'
@@ -319,7 +318,7 @@ export const PokedexChassis: React.FC = () => {
                     : handleStartScan
                 }
                 disabled={scanState === 'scanning'}
-                className={`flex-1 flex items-center justify-center py-3.5 px-6 rounded-2xl font-bold font-tech text-white btn-pokedex tracking-widest uppercase transition border-2 shadow-[0_4px_0_#1d4ed8,0_6px_12px_rgba(0,0,0,0.4)] active:scale-95 disabled:opacity-75 ${
+                className={`flex-1 flex items-center justify-center py-3.5 sm:py-4 px-4 sm:px-6 rounded-2xl font-bold font-tech text-white btn-pokedex tracking-widest uppercase transition border-2 shadow-[0_4px_0_#1d4ed8,0_6px_12px_rgba(0,0,0,0.4)] active:scale-95 disabled:opacity-75 ${
                   scanState === 'error'
                     ? 'bg-gradient-to-b from-amber-500 via-orange-600 to-red-600 border-amber-300 shadow-[0_4px_0_#991b1b]'
                     : 'bg-gradient-to-b from-blue-500 via-blue-600 to-blue-700 hover:from-blue-400 hover:to-blue-600 border-blue-300'
@@ -329,46 +328,39 @@ export const PokedexChassis: React.FC = () => {
                   <>
                     <RotateCcw className="w-6 h-6 mr-2" />
                     <span className="text-xl sm:text-2xl font-bold tracking-widest">
-                      重新扫描
+                      再找一次！
                     </span>
                   </>
                 ) : (
                   <>
                     <Scan className={`w-6 h-6 mr-2 ${scanState === 'scanning' ? 'animate-spin' : ''}`} />
                     <span className="text-xl sm:text-2xl font-bold tracking-widest">
-                      {scanState === 'scanning' ? '扫描中...' : '扫描'}
+                      {scanState === 'scanning' ? '扫描中...' : '开始扫描'}
                     </span>
                   </>
                 )}
               </button>
+            ) : (
+              <div className="flex-1 text-center font-tech text-xs sm:text-sm text-red-200/80">
+                点击上方卡片查看宝可梦详情
+              </div>
             )}
 
-            {/* Right Action buttons */}
-            <div className="flex flex-col space-y-2 flex-shrink-0">
-              {/* Voice Readout Test */}
-              <button
-                onClick={() => {
-                  if (targetPokemon) {
-                    playButtonClick();
-                    speakPokemonIntro(targetPokemon, setIsSpeaking);
-                  }
-                }}
-                disabled={!targetPokemon}
-                title="重新播报图鉴介绍"
-                className="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center border border-blue-400/80 shadow btn-pokedex disabled:opacity-30"
-              >
-                <Volume2 className="w-5 h-5" />
-              </button>
-
-              {/* Reset to Camera button */}
-              <button
-                onClick={handleResetScanner}
-                title="重置"
-                className="w-10 h-10 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center border border-zinc-600 shadow btn-pokedex"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
-            </div>
+            {/* Right Action: Voice Readout */}
+            <button
+              onClick={() => {
+                if (targetPokemon) {
+                  playButtonClick();
+                  speakPokemonIntro(targetPokemon, setIsSpeaking);
+                }
+              }}
+              disabled={!targetPokemon}
+              title="重新播报图鉴介绍"
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white flex flex-col items-center justify-center border-2 border-blue-400 shadow-[0_3px_0_#1e1b4b] active:shadow-none active:translate-y-0.5 transition active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              <Volume2 className="w-5 h-5 sm:w-5 sm:h-5" />
+              <span className="font-tech text-[9px] sm:text-[10px] mt-0.5">播报</span>
+            </button>
           </div>
         </div>
 
