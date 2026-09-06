@@ -27,8 +27,7 @@ import {
   speakPokemonIntro,
   speakNotFoundMessage,
   triggerHaptic,
-  stopSpeaking,
-  registerSpeakingCallback
+  stopSpeaking
 } from '../services/soundEffects';
 
 export const PokedexChassis: React.FC = () => {
@@ -43,20 +42,11 @@ export const PokedexChassis: React.FC = () => {
   const [showLANModal, setShowLANModal] = useState<boolean>(false);
   const [muted, setMuted] = useState<boolean>(isSoundMuted());
 
-  // Bind global speaking callback to guarantee isSpeaking never gets stuck
-  React.useEffect(() => {
-    registerSpeakingCallback(setIsSpeaking);
-    return () => {
-      registerSpeakingCallback(() => {});
-    };
-  }, []);
 
   // Trigger camera scan
   const handleStartScan = () => {
     if (scanState === 'scanning') return;
 
-    stopSpeaking();
-    setIsSpeaking(false);
     unlockAudioAndSpeech();
     playButtonClick();
     playScanSound();
@@ -131,19 +121,26 @@ export const PokedexChassis: React.FC = () => {
             <div className="relative p-1.5 rounded-full bg-gradient-to-b from-zinc-200 to-zinc-400 shadow-md">
               <div
                 className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full lens-blue transition-all duration-300 relative overflow-hidden flex items-center justify-center ${
-                  isSpeaking ? 'lens-speaking-pulse' : ''
+                  isSpeaking
+                    ? 'lens-speaking-pulse'
+                    : scanState === 'scanning'
+                    ? 'lens-blue-pulse'
+                    : ''
                 }`}
               >
                 {/* Internal Lens Reflections */}
                 <div className="absolute top-1.5 left-2 w-4 h-2.5 rounded-full bg-white/70 -rotate-45 filter blur-[0.5px]" />
                 <div className="absolute bottom-2 right-2 w-2 h-1 rounded-full bg-cyan-200/50" />
+                {scanState === 'scanning' && (
+                  <div className="w-3 h-3 rounded-full bg-white animate-ping" />
+                )}
                 {isSpeaking && (
                   <div className="w-5 h-5 rounded-full bg-cyan-200/70 animate-ping" />
                 )}
               </div>
             </div>
 
-            {/* Three Status LED Lights (Red, Yellow, Green) - Calm in standby, lively wave during speech */}
+            {/* Three Status LED Lights (Red, Yellow, Green) with Anime Speech Chase Effect */}
             <div className="flex items-center space-x-2">
               {/* Red LED */}
               <div
@@ -151,7 +148,9 @@ export const PokedexChassis: React.FC = () => {
                 className={`w-3.5 h-3.5 rounded-full border border-black/40 shadow-sm transition-all ${
                   isSpeaking
                     ? 'led-speech-red'
-                    : 'bg-red-950/80'
+                    : scanState === 'scanning' || scanState === 'error'
+                    ? 'bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse'
+                    : 'bg-red-900/80'
                 }`}
               />
               {/* Yellow LED */}
@@ -160,7 +159,9 @@ export const PokedexChassis: React.FC = () => {
                 className={`w-3.5 h-3.5 rounded-full border border-black/40 shadow-sm transition-all ${
                   isSpeaking
                     ? 'led-speech-yellow'
-                    : 'bg-yellow-950/80'
+                    : scanState === 'silhouette'
+                    ? 'bg-yellow-400 shadow-[0_0_8px_#facc15] animate-bounce'
+                    : 'bg-yellow-900/80'
                 }`}
               />
               {/* Green LED */}
@@ -169,7 +170,9 @@ export const PokedexChassis: React.FC = () => {
                 className={`w-3.5 h-3.5 rounded-full border border-black/40 shadow-sm transition-all ${
                   isSpeaking
                     ? 'led-speech-green'
-                    : 'bg-emerald-950/80'
+                    : scanState === 'revealed'
+                    ? 'bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse'
+                    : 'bg-emerald-950'
                 }`}
               />
             </div>
@@ -253,7 +256,7 @@ export const PokedexChassis: React.FC = () => {
           </div>
 
           {/* Screen Content Container (CRT display) */}
-          <div className="w-full h-[340px] sm:h-[400px] rounded-xl overflow-hidden shadow-2xl relative">
+          <div className="w-full h-[365px] sm:h-[410px] rounded-xl overflow-hidden shadow-2xl relative">
             {activeTab === 'book' ? (
               <PokedexBook
                 onSelectPokemon={handleBookSelectPokemon}

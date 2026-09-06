@@ -386,20 +386,9 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
 }
 
 let currentSpeechId = 0;
-let globalSpeakingCallback: ((isSpeaking: boolean) => void) | null = null;
-
-export function registerSpeakingCallback(cb: (isSpeaking: boolean) => void) {
-  globalSpeakingCallback = cb;
-}
-
-function notifySpeaking(isSpeaking: boolean, localCb?: (isSpeaking: boolean) => void) {
-  localCb?.(isSpeaking);
-  globalSpeakingCallback?.(isSpeaking);
-}
 
 export function stopSpeaking() {
   currentSpeechId++;
-  notifySpeaking(false);
 
   if (ttsAudio) {
     try {
@@ -472,21 +461,21 @@ export function speakPokemonIntro(
 
       utterance.onstart = () => {
         if (speechId === currentSpeechId) {
-          notifySpeaking(true, onSpeakingChange);
+          onSpeakingChange?.(true);
         }
       };
 
       utterance.onend = () => {
         if (speechId === currentSpeechId) {
           activeUtterance = null;
-          notifySpeaking(false, onSpeakingChange);
+          onSpeakingChange?.(false);
         }
       };
 
       utterance.onerror = () => {
         if (speechId === currentSpeechId) {
           activeUtterance = null;
-          notifySpeaking(false, onSpeakingChange);
+          onSpeakingChange?.(false);
         }
       };
 
@@ -508,19 +497,19 @@ export function speakPokemonIntro(
 
     audio.onplay = () => {
       if (speechId === currentSpeechId) {
-        notifySpeaking(true, onSpeakingChange);
+        onSpeakingChange?.(true);
       }
     };
 
     audio.onended = () => {
       if (speechId === currentSpeechId) {
-        notifySpeaking(false, onSpeakingChange);
+        onSpeakingChange?.(false);
       }
     };
 
     audio.onerror = () => {
       if (speechId === currentSpeechId) {
-        notifySpeaking(false, onSpeakingChange);
+        onSpeakingChange?.(false);
       }
     };
 
@@ -528,12 +517,12 @@ export function speakPokemonIntro(
     if (playPromise !== undefined) {
       playPromise.catch(() => {
         if (speechId === currentSpeechId) {
-          notifySpeaking(false, onSpeakingChange);
+          onSpeakingChange?.(false);
         }
       });
     }
   } catch {
-    notifySpeaking(false, onSpeakingChange);
+    onSpeakingChange?.(false);
   }
 }
 
@@ -575,21 +564,21 @@ export function speakNotFoundMessage(onSpeakingChange?: (isSpeaking: boolean) =>
 
       utterance.onstart = () => {
         if (speechId === currentSpeechId) {
-          notifySpeaking(true, onSpeakingChange);
+          onSpeakingChange?.(true);
         }
       };
 
       utterance.onend = () => {
         if (speechId === currentSpeechId) {
           activeUtterance = null;
-          notifySpeaking(false, onSpeakingChange);
+          onSpeakingChange?.(false);
         }
       };
 
       utterance.onerror = () => {
         if (speechId === currentSpeechId) {
           activeUtterance = null;
-          notifySpeaking(false, onSpeakingChange);
+          onSpeakingChange?.(false);
         }
       };
 
@@ -611,19 +600,19 @@ export function speakNotFoundMessage(onSpeakingChange?: (isSpeaking: boolean) =>
 
     audio.onplay = () => {
       if (speechId === currentSpeechId) {
-        notifySpeaking(true, onSpeakingChange);
+        onSpeakingChange?.(true);
       }
     };
 
     audio.onended = () => {
       if (speechId === currentSpeechId) {
-        notifySpeaking(false, onSpeakingChange);
+        onSpeakingChange?.(false);
       }
     };
 
     audio.onerror = () => {
       if (speechId === currentSpeechId) {
-        notifySpeaking(false, onSpeakingChange);
+        onSpeakingChange?.(false);
       }
     };
 
@@ -631,12 +620,12 @@ export function speakNotFoundMessage(onSpeakingChange?: (isSpeaking: boolean) =>
     if (playPromise !== undefined) {
       playPromise.catch(() => {
         if (speechId === currentSpeechId) {
-          notifySpeaking(false, onSpeakingChange);
+          onSpeakingChange?.(false);
         }
       });
     }
   } catch {
-    notifySpeaking(false, onSpeakingChange);
+    onSpeakingChange?.(false);
   }
 }
 
