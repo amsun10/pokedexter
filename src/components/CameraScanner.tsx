@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, SwitchCamera, Upload } from 'lucide-react';
+import { unlockAudioAndSpeech } from '../services/soundEffects';
 
 interface CameraScannerProps {
   onCaptureFrame: (canvas: HTMLCanvasElement) => void;
@@ -90,6 +91,7 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({
 
   // Handle local file photo upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    unlockAudioAndSpeech();
     const file = e.target.files?.[0];
     if (!file) return;
 

@@ -148,17 +148,17 @@ export const WhosThatPokemon: React.FC<WhosThatPokemonProps> = ({
 
       {/* ================= Silhouette Suspense Stage ================= */}
       {!isRevealed ? (
-        <div className="relative z-10 my-auto flex flex-col items-center justify-center">
+        <div
+          onClick={handleManualReveal}
+          className="relative z-10 my-auto flex flex-col items-center justify-center cursor-pointer select-none"
+        >
           {/* Glowing Aura Ring */}
           <div
             className="absolute w-48 h-48 sm:w-56 sm:h-56 rounded-full opacity-20 bg-blue-400"
           />
 
           {/* Pokemon Silhouette */}
-          <div
-            onClick={handleManualReveal}
-            className="relative w-44 h-44 sm:w-48 sm:h-48 flex items-center justify-center cursor-pointer select-none"
-          >
+          <div className="relative w-44 h-44 sm:w-48 sm:h-48 flex items-center justify-center">
             <img
               src={pokemon.artworkUrl}
               alt={pokemon.name}
@@ -170,15 +170,12 @@ export const WhosThatPokemon: React.FC<WhosThatPokemonProps> = ({
           </div>
 
           {/* Suspense Button */}
-          <div
-            onClick={handleManualReveal}
-            className="mt-2 cursor-pointer bg-gradient-to-r from-red-600 via-rose-500 to-red-600 px-5 py-2 rounded-xl shadow-lg border-2 border-yellow-300 transform -rotate-1 hover:scale-105 transition active:scale-95 text-center"
-          >
+          <div className="mt-2 bg-gradient-to-r from-red-600 via-rose-500 to-red-600 px-5 py-2.5 rounded-2xl shadow-xl border-2 border-yellow-300 transform -rotate-1 hover:scale-105 transition active:scale-95 text-center animate-bounce">
             <h2 className="text-lg sm:text-xl font-pixel text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wider">
-              猜猜我是谁？！
+              ✨ 猜猜我是谁？！ ✨
             </h2>
-            <p className="text-[10px] font-mono-tech text-white/90 mt-0.5">
-              轻触屏幕立即揭晓 (倒计时 {countdown}s)
+            <p className="text-[11px] font-mono-tech text-white font-bold mt-1 bg-black/30 px-3 py-0.5 rounded-full border border-yellow-300/40">
+              👉 轻触屏幕立即揭晓 (倒计时 {countdown}s)
             </p>
           </div>
         </div>
