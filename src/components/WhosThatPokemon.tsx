@@ -31,6 +31,7 @@ export const WhosThatPokemon: React.FC<WhosThatPokemonProps> = ({
   const [displayedCharCount, setDisplayedCharCount] = useState<number>(0);
 
   const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasSpokenRef = useRef<boolean>(false);
 
   const fullIntroText = `【No.${String(pokemon.id).padStart(3, '0')} ${pokemon.name}】${pokemon.genus}，${pokemon.types.join('和')}属性。${pokemon.description}`;
 
@@ -48,22 +49,23 @@ export const WhosThatPokemon: React.FC<WhosThatPokemonProps> = ({
 
       if (current >= fullIntroText.length) {
         if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
-        onSpeakingChange(false);
       }
-    }, 55);
+    }, 45);
   };
 
   // Fast forward text
   const handleFastForwardText = () => {
     if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
     setDisplayedCharCount(fullIntroText.length);
-    triggerHaptic('click');
-    onSpeakingChange(false);
   };
 
   // Trigger reveal sequence
   useEffect(() => {
-    if (isRevealed) {
+    if (!isRevealed) {
+      hasSpokenRef.current = false;
+    } else if (isRevealed && !hasSpokenRef.current) {
+      hasSpokenRef.current = true;
+
       // Golden confetti celebration
       try {
         confetti({
@@ -88,7 +90,7 @@ export const WhosThatPokemon: React.FC<WhosThatPokemonProps> = ({
       stopSpeaking();
       if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
     };
-  }, [isRevealed, pokemon]);
+  }, [isRevealed, pokemon, onSpeakingChange]);
 
   // Auto reveal countdown
   useEffect(() => {

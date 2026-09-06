@@ -347,18 +347,29 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
   };
 }
 
+let currentSpeechId = 0;
+
 export function stopSpeaking() {
+  currentSpeechId++;
+
   if (ttsAudio) {
     try {
+      ttsAudio.onplay = null;
+      ttsAudio.onended = null;
+      ttsAudio.onerror = null;
       ttsAudio.pause();
       ttsAudio.currentTime = 0;
+      ttsAudio.removeAttribute('src');
+      ttsAudio.load();
     } catch {
       // ignore
     }
   }
+
   if ('speechSynthesis' in window) {
     try {
       if (activeUtterance) {
+        activeUtterance.onstart = null;
         activeUtterance.onend = null;
         activeUtterance.onerror = null;
       }
@@ -367,54 +378,6 @@ export function stopSpeaking() {
     } catch {
       // ignore
     }
-  }
-}
-
-function speakWithWebSpeech(speechText: string, onSpeakingChange?: (isSpeaking: boolean) => void) {
-  if (!('speechSynthesis' in window)) {
-    onSpeakingChange?.(false);
-    return;
-  }
-
-  try {
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-    }
-
-    const utterance = new SpeechSynthesisUtterance(speechText);
-    utterance.lang = 'zh-CN';
-    utterance.rate = 1.0;
-    utterance.pitch = 1.05;
-
-    const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
-    const zhVoice = voices.find(
-      (v) => v.lang.startsWith('zh') || v.lang.includes('CN') || v.lang.includes('cmn')
-    );
-    if (zhVoice) {
-      utterance.voice = zhVoice;
-    }
-
-    // Keep global reference so browser garbage collector doesn't cut off speech
-    activeUtterance = utterance;
-
-    utterance.onstart = () => {
-      onSpeakingChange?.(true);
-    };
-
-    utterance.onend = () => {
-      activeUtterance = null;
-      onSpeakingChange?.(false);
-    };
-
-    utterance.onerror = () => {
-      activeUtterance = null;
-      onSpeakingChange?.(false);
-    };
-
-    window.speechSynthesis.speak(utterance);
-  } catch (e) {
-    console.warn('Web Speech error:', e);
-    onSpeakingChange?.(false);
   }
 }
 
@@ -428,46 +391,100 @@ export function speakPokemonIntro(
   }
 
   stopSpeaking();
+  const speechId = currentSpeechId;
 
   const formattedId = String(pokemon.id).padStart(3, '0');
   const typeText = pokemon.types.join('和');
   const speechText = `发现宝可梦！${formattedId}号，${pokemon.name}。${pokemon.genus}，${typeText}属性。${pokemon.description}`;
 
-  // Primary: Online Audio TTS Stream (Works reliably inside mobile timer callbacks & in silent mode)
+  // Primary: Native Web Speech API (High quality Siri/Google Chinese voice, zero latency, offline)
+  const hasSpeechSynthesis = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+  if (hasSpeechSynthesis) {
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(speechText);
+      utterance.lang = 'zh-CN';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.05;
+
+      const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
+      const zhVoice = voices.find(
+        (v) => v.lang.startsWith('zh') || v.lang.includes('CN') || v.lang.includes('cmn')
+      );
+      if (zhVoice) {
+        utterance.voice = zhVoice;
+      }
+
+      activeUtterance = utterance;
+
+      utterance.onstart = () => {
+        if (speechId === currentSpeechId) {
+          onSpeakingChange?.(true);
+        }
+      };
+
+      utterance.onend = () => {
+        if (speechId === currentSpeechId) {
+          activeUtterance = null;
+          onSpeakingChange?.(false);
+        }
+      };
+
+      utterance.onerror = () => {
+        if (speechId === currentSpeechId) {
+          activeUtterance = null;
+          onSpeakingChange?.(false);
+        }
+      };
+
+      window.speechSynthesis.speak(utterance);
+      return; // Handled exclusively by Web Speech. Never run audio stream simultaneously.
+    } catch (e) {
+      console.warn('Web Speech error, falling back to audio stream:', e);
+    }
+  }
+
+  // Fallback: Online Audio TTS Stream (used only if Web Speech is completely unsupported)
   try {
     const audio = getTtsAudio();
     audio.setAttribute('referrerpolicy', 'no-referrer');
     const ttsUrl = `https://fanyi.baidu.com/gettts?lan=zh&text=${encodeURIComponent(speechText)}&spd=5&source=web`;
 
-    let audioCompleted = false;
     audio.src = ttsUrl;
     audio.volume = 1.0;
 
     audio.onplay = () => {
-      onSpeakingChange?.(true);
+      if (speechId === currentSpeechId) {
+        onSpeakingChange?.(true);
+      }
     };
 
     audio.onended = () => {
-      audioCompleted = true;
-      onSpeakingChange?.(false);
+      if (speechId === currentSpeechId) {
+        onSpeakingChange?.(false);
+      }
     };
 
     audio.onerror = () => {
-      if (!audioCompleted) {
-        // Fallback to local Web Speech API
-        speakWithWebSpeech(speechText, onSpeakingChange);
+      if (speechId === currentSpeechId) {
+        onSpeakingChange?.(false);
       }
     };
 
     const playPromise = audio.play();
     if (playPromise !== undefined) {
-      playPromise.catch((err) => {
-        console.warn('TTS audio play failed, falling back to Web Speech:', err);
-        speakWithWebSpeech(speechText, onSpeakingChange);
+      playPromise.catch(() => {
+        if (speechId === currentSpeechId) {
+          onSpeakingChange?.(false);
+        }
       });
     }
   } catch {
-    speakWithWebSpeech(speechText, onSpeakingChange);
+    onSpeakingChange?.(false);
   }
 }
 
