@@ -255,6 +255,41 @@ export function playLockOnSound() {
 }
 
 /**
+ * Low tactical buzzer sound when no Pokémon match is found
+ */
+export function playScanFailedSound() {
+  if (isMutedState) return;
+
+  try {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const now = ctx.currentTime;
+
+    // Two low descending buzzer tones (320Hz -> 160Hz)
+    [0, 0.16].forEach((timeOffset) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(320, now + timeOffset);
+      osc.frequency.exponentialRampToValueAtTime(160, now + timeOffset + 0.12);
+
+      gain.gain.setValueAtTime(0.3, now + timeOffset);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.12);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + timeOffset);
+      osc.stop(now + timeOffset + 0.12);
+    });
+  } catch (e) {
+    console.warn('Audio scan failed error:', e);
+  }
+}
+
+/**
  * Iconic 'Who's that Pokemon?' suspense motif
  */
 export function playWhoIsThatPokemonJingle() {
@@ -449,6 +484,109 @@ export function speakPokemonIntro(
   }
 
   // Fallback: Online Audio TTS Stream (used only if Web Speech is completely unsupported)
+  try {
+    const audio = getTtsAudio();
+    audio.setAttribute('referrerpolicy', 'no-referrer');
+    const ttsUrl = `https://fanyi.baidu.com/gettts?lan=zh&text=${encodeURIComponent(speechText)}&spd=5&source=web`;
+
+    audio.src = ttsUrl;
+    audio.volume = 1.0;
+
+    audio.onplay = () => {
+      if (speechId === currentSpeechId) {
+        onSpeakingChange?.(true);
+      }
+    };
+
+    audio.onended = () => {
+      if (speechId === currentSpeechId) {
+        onSpeakingChange?.(false);
+      }
+    };
+
+    audio.onerror = () => {
+      if (speechId === currentSpeechId) {
+        onSpeakingChange?.(false);
+      }
+    };
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        if (speechId === currentSpeechId) {
+          onSpeakingChange?.(false);
+        }
+      });
+    }
+  } catch {
+    onSpeakingChange?.(false);
+  }
+}
+
+/**
+ * Pokédex voice narration when no Pokémon is matched
+ */
+export function speakNotFoundMessage(onSpeakingChange?: (isSpeaking: boolean) => void) {
+  if (isMutedState) {
+    onSpeakingChange?.(false);
+    return;
+  }
+
+  stopSpeaking();
+  const speechId = currentSpeechId;
+  const speechText = '图鉴数据库未检索到宝可梦数据，请对准玩偶正面重新扫描。';
+
+  const hasSpeechSynthesis = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+  if (hasSpeechSynthesis) {
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(speechText);
+      utterance.lang = 'zh-CN';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.05;
+
+      const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
+      const zhVoice = voices.find(
+        (v) => v.lang.startsWith('zh') || v.lang.includes('CN') || v.lang.includes('cmn')
+      );
+      if (zhVoice) {
+        utterance.voice = zhVoice;
+      }
+
+      activeUtterance = utterance;
+
+      utterance.onstart = () => {
+        if (speechId === currentSpeechId) {
+          onSpeakingChange?.(true);
+        }
+      };
+
+      utterance.onend = () => {
+        if (speechId === currentSpeechId) {
+          activeUtterance = null;
+          onSpeakingChange?.(false);
+        }
+      };
+
+      utterance.onerror = () => {
+        if (speechId === currentSpeechId) {
+          activeUtterance = null;
+          onSpeakingChange?.(false);
+        }
+      };
+
+      window.speechSynthesis.speak(utterance);
+      return;
+    } catch (e) {
+      console.warn('Web Speech error in speakNotFoundMessage:', e);
+    }
+  }
+
+  // Fallback to online audio
   try {
     const audio = getTtsAudio();
     audio.setAttribute('referrerpolicy', 'no-referrer');

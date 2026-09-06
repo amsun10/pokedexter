@@ -12,6 +12,7 @@ import type { Pokemon, ScanState } from '../types/pokemon';
 import { CameraScanner } from './CameraScanner';
 import { WhosThatPokemon } from './WhosThatPokemon';
 import { PokedexBook } from './PokedexBook';
+import { ScanNotFound } from './ScanNotFound';
 import { LANModal } from './LANModal';
 import { detectPokemonFromImage, type DetectionResult } from '../services/detector';
 import {
@@ -21,8 +22,10 @@ import {
   playButtonClick,
   playScanSound,
   playLockOnSound,
+  playScanFailedSound,
   playWhoIsThatPokemonJingle,
   speakPokemonIntro,
+  speakNotFoundMessage,
   triggerHaptic,
   stopSpeaking
 } from '../services/soundEffects';
@@ -57,7 +60,18 @@ export const PokedexChassis: React.FC = () => {
     setIsCapturing(false);
 
     try {
-      const result: DetectionResult = await detectPokemonFromImage(canvas);
+      const result: DetectionResult | null = await detectPokemonFromImage(canvas);
+
+      if (!result || !result.pokemon) {
+        // No match found in current frame
+        playScanFailedSound();
+        triggerHaptic('click');
+        speakNotFoundMessage(setIsSpeaking);
+        setScanState('error');
+        setTargetPokemon(null);
+        return;
+      }
+
       setTargetPokemon(result.pokemon);
 
       // Play lock-on sound and trigger 'Who's That Pokemon'
@@ -70,7 +84,10 @@ export const PokedexChassis: React.FC = () => {
       }, 400);
     } catch (e) {
       console.warn('Detection failed:', e);
-      setScanState('idle');
+      playScanFailedSound();
+      speakNotFoundMessage(setIsSpeaking);
+      setScanState('error');
+      setTargetPokemon(null);
     }
   };
 
@@ -131,7 +148,7 @@ export const PokedexChassis: React.FC = () => {
                 className={`w-3.5 h-3.5 rounded-full border border-black/40 shadow-sm transition-all ${
                   isSpeaking
                     ? 'led-speech-red'
-                    : scanState === 'scanning'
+                    : scanState === 'scanning' || scanState === 'error'
                     ? 'bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse'
                     : 'bg-red-900/80'
                 }`}
@@ -254,6 +271,12 @@ export const PokedexChassis: React.FC = () => {
                   onSpeakingChange={setIsSpeaking}
                 />
               )
+            ) : scanState === 'error' ? (
+              <ScanNotFound
+                onRetry={handleResetScanner}
+                onOpenBook={() => setActiveTab('book')}
+                onSpeakingChange={setIsSpeaking}
+              />
             ) : (
               <CameraScanner
                 onCaptureFrame={handleFrameCaptured}
@@ -291,17 +314,32 @@ export const PokedexChassis: React.FC = () => {
             {activeTab === 'detector' && (
               <button
                 onClick={
-                  scanState === 'revealed'
+                  scanState === 'revealed' || scanState === 'error'
                     ? handleResetScanner
                     : handleStartScan
                 }
                 disabled={scanState === 'scanning'}
-                className="flex-1 flex items-center justify-center py-3.5 px-6 rounded-2xl font-bold font-tech text-white btn-pokedex tracking-widest uppercase transition bg-gradient-to-b from-blue-500 via-blue-600 to-blue-700 hover:from-blue-400 hover:to-blue-600 border-2 border-blue-300 shadow-[0_4px_0_#1d4ed8,0_6px_12px_rgba(0,0,0,0.4)] active:scale-95 disabled:opacity-75"
+                className={`flex-1 flex items-center justify-center py-3.5 px-6 rounded-2xl font-bold font-tech text-white btn-pokedex tracking-widest uppercase transition border-2 shadow-[0_4px_0_#1d4ed8,0_6px_12px_rgba(0,0,0,0.4)] active:scale-95 disabled:opacity-75 ${
+                  scanState === 'error'
+                    ? 'bg-gradient-to-b from-amber-500 via-orange-600 to-red-600 border-amber-300 shadow-[0_4px_0_#991b1b]'
+                    : 'bg-gradient-to-b from-blue-500 via-blue-600 to-blue-700 hover:from-blue-400 hover:to-blue-600 border-blue-300'
+                }`}
               >
-                <Scan className={`w-6 h-6 mr-2 ${scanState === 'scanning' ? 'animate-spin' : ''}`} />
-                <span className="text-xl sm:text-2xl font-bold tracking-widest">
-                  {scanState === 'scanning' ? '扫描中...' : '扫描'}
-                </span>
+                {scanState === 'error' ? (
+                  <>
+                    <RotateCcw className="w-6 h-6 mr-2" />
+                    <span className="text-xl sm:text-2xl font-bold tracking-widest">
+                      重新扫描
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Scan className={`w-6 h-6 mr-2 ${scanState === 'scanning' ? 'animate-spin' : ''}`} />
+                    <span className="text-xl sm:text-2xl font-bold tracking-widest">
+                      {scanState === 'scanning' ? '扫描中...' : '扫描'}
+                    </span>
+                  </>
+                )}
               </button>
             )}
 
