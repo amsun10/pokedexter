@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti';
 import { Sparkles, Volume2, RotateCcw } from 'lucide-react';
 import type { Pokemon } from '../types/pokemon';
 import {
+  unlockAudioAndSpeech,
   playRevealFanfare,
   speakPokemonIntro,
   playTypewriterBlip,
@@ -100,9 +101,15 @@ export const WhosThatPokemon: React.FC<WhosThatPokemonProps> = ({
 
   // Handle replay of voice intro + typewriter reset
   const handleReplayVoice = () => {
+    unlockAudioAndSpeech();
     triggerHaptic('click');
     startTypewriter();
     speakPokemonIntro(pokemon, onSpeakingChange);
+  };
+
+  const handleManualReveal = () => {
+    unlockAudioAndSpeech();
+    onReveal();
   };
 
   return (
@@ -146,7 +153,7 @@ export const WhosThatPokemon: React.FC<WhosThatPokemonProps> = ({
 
           {/* Pokemon Silhouette */}
           <div
-            onClick={onReveal}
+            onClick={handleManualReveal}
             className="relative w-44 h-44 sm:w-48 sm:h-48 flex items-center justify-center cursor-pointer select-none"
           >
             <img
@@ -161,7 +168,7 @@ export const WhosThatPokemon: React.FC<WhosThatPokemonProps> = ({
 
           {/* Suspense Button */}
           <div
-            onClick={onReveal}
+            onClick={handleManualReveal}
             className="mt-2 cursor-pointer bg-gradient-to-r from-red-600 via-rose-500 to-red-600 px-5 py-2 rounded-xl shadow-lg border-2 border-yellow-300 transform -rotate-1 hover:scale-105 transition active:scale-95 text-center"
           >
             <h2 className="text-lg sm:text-xl font-pixel text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wider">

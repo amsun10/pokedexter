@@ -17,6 +17,7 @@ import { detectPokemonFromImage, type DetectionResult } from '../services/detect
 import {
   isSoundMuted,
   toggleSoundMuted,
+  unlockAudioAndSpeech,
   playButtonClick,
   playScanSound,
   playLockOnSound,
@@ -43,6 +44,7 @@ export const PokedexChassis: React.FC = () => {
   const handleStartScan = () => {
     if (scanState === 'scanning') return;
 
+    unlockAudioAndSpeech();
     playButtonClick();
     playScanSound();
     triggerHaptic('scan');

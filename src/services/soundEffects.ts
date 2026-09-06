@@ -2,16 +2,67 @@ import type { Pokemon } from '../types/pokemon';
 
 // Web Audio Context singleton
 let audioCtx: AudioContext | null = null;
+let isAudioUnlocked = false;
 
 function getAudioContext(): AudioContext {
   if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     audioCtx = new AudioContextClass();
   }
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
   return audioCtx;
+}
+
+/**
+ * Mobile Audio & Speech Unlocker (Crucial for iOS Safari & Android Chrome)
+ */
+export function unlockAudioAndSpeech() {
+  if (isAudioUnlocked) return;
+  try {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    // Play a tiny silent buffer to warm up iOS hardware audio output
+    const buffer = ctx.createBuffer(1, 1, 22050);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    source.start(0);
+
+    // Warm up Web Speech API on user gesture for iOS Safari
+    if ('speechSynthesis' in window) {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      const warmUp = new SpeechSynthesisUtterance(' ');
+      warmUp.volume = 0.01;
+      warmUp.rate = 2.0;
+      window.speechSynthesis.speak(warmUp);
+    }
+
+    isAudioUnlocked = true;
+  } catch (e) {
+    console.warn('Audio unlock warning:', e);
+  }
+}
+
+// Auto-attach unlock listeners on any first touch or click
+if (typeof window !== 'undefined') {
+  const globalUnlock = () => {
+    unlockAudioAndSpeech();
+    window.removeEventListener('touchstart', globalUnlock);
+    window.removeEventListener('touchend', globalUnlock);
+    window.removeEventListener('click', globalUnlock);
+  };
+  window.addEventListener('touchstart', globalUnlock, { passive: true, capture: true });
+  window.addEventListener('touchend', globalUnlock, { passive: true, capture: true });
+  window.addEventListener('click', globalUnlock, { passive: true, capture: true });
 }
 
 // Global Mute State
@@ -52,21 +103,23 @@ export function playButtonClick() {
 
   try {
     const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
     osc.type = 'sine';
     osc.frequency.setValueAtTime(800, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.05);
+    osc.frequency.exponentialRampToValueAtTime(350, ctx.currentTime + 0.06);
 
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+    gain.gain.setValueAtTime(0.35, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.06);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start();
-    osc.stop(ctx.currentTime + 0.05);
+    osc.stop(ctx.currentTime + 0.06);
   } catch (e) {
     console.warn('Audio click error:', e);
   }
@@ -80,19 +133,21 @@ export function playTypewriterBlip() {
   if (isMutedState) return;
 
   const nowMs = Date.now();
-  if (nowMs - lastBlipTime < 70) return; // throttle
+  if (nowMs - lastBlipTime < 65) return; // throttle
   lastBlipTime = nowMs;
 
   try {
     const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(950, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(450, ctx.currentTime + 0.025);
+    osc.frequency.setValueAtTime(1050, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.025);
 
-    gain.gain.setValueAtTime(0.06, ctx.currentTime);
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.025);
 
     osc.connect(gain);
@@ -106,33 +161,35 @@ export function playTypewriterBlip() {
 }
 
 /**
- * Radar / Scanning beep beep beep sound
+ * Radar / Scanning beep beep beep sound (Loud, unmistakable anime scanner)
  */
 export function playScanSound() {
   if (isMutedState) return;
 
   try {
     const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+
     const now = ctx.currentTime;
-    
-    // Play 3 rapid chirps
+
+    // Play 3 loud, high-tech radar chirp sweeps
     [0, 0.12, 0.24].forEach((timeOffset, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      osc.type = 'square';
-      const freq = 1200 + idx * 250;
-      osc.frequency.setValueAtTime(freq, now + timeOffset);
-      osc.frequency.exponentialRampToValueAtTime(freq + 400, now + timeOffset + 0.08);
+      osc.type = 'sawtooth';
+      const baseFreq = 950 + idx * 300;
+      osc.frequency.setValueAtTime(baseFreq, now + timeOffset);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq + 700, now + timeOffset + 0.09);
 
-      gain.gain.setValueAtTime(0.25, now + timeOffset);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.08);
+      gain.gain.setValueAtTime(0.4, now + timeOffset);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.09);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start(now + timeOffset);
-      osc.stop(now + timeOffset + 0.08);
+      osc.stop(now + timeOffset + 0.09);
     });
   } catch (e) {
     console.warn('Audio scan error:', e);
@@ -147,22 +204,24 @@ export function playLockOnSound() {
 
   try {
     const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+
     const now = ctx.currentTime;
 
     const osc1 = ctx.createOscillator();
     const osc2 = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc1.type = 'sine';
-    osc2.type = 'triangle';
+    osc1.type = 'triangle';
+    osc2.type = 'sine';
 
     osc1.frequency.setValueAtTime(987.77, now); // B5
-    osc1.frequency.setValueAtTime(1318.51, now + 0.1); // E6
+    osc1.frequency.setValueAtTime(1318.51, now + 0.12); // E6
     osc2.frequency.setValueAtTime(1318.51, now);
-    osc2.frequency.setValueAtTime(1760.00, now + 0.1); // A6
+    osc2.frequency.setValueAtTime(1760.00, now + 0.12); // A6
 
-    gain.gain.setValueAtTime(0.35, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+    gain.gain.setValueAtTime(0.4, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
 
     osc1.connect(gain);
     osc2.connect(gain);
@@ -170,8 +229,8 @@ export function playLockOnSound() {
 
     osc1.start(now);
     osc2.start(now);
-    osc1.stop(now + 0.35);
-    osc2.stop(now + 0.35);
+    osc1.stop(now + 0.4);
+    osc2.stop(now + 0.4);
   } catch (e) {
     console.warn('Lock-on audio error:', e);
   }
@@ -185,24 +244,25 @@ export function playWhoIsThatPokemonJingle() {
 
   try {
     const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+
     const now = ctx.currentTime;
 
-    // Classic 4-note suspense motif
     const notes = [
-      { f: 523.25, t: 0, d: 0.15 },    // C5
-      { f: 659.25, t: 0.16, d: 0.15 }, // E5
-      { f: 783.99, t: 0.32, d: 0.2 },  // G5
-      { f: 1046.50, t: 0.54, d: 0.4 }, // C6
+      { f: 523.25, t: 0, d: 0.16 },    // C5
+      { f: 659.25, t: 0.16, d: 0.16 }, // E5
+      { f: 783.99, t: 0.32, d: 0.22 }, // G5
+      { f: 1046.50, t: 0.54, d: 0.45 }, // C6
     ];
 
-    notes.forEach(n => {
+    notes.forEach((n) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(n.f, now + n.t);
 
-      gain.gain.setValueAtTime(0.3, now + n.t);
+      gain.gain.setValueAtTime(0.35, now + n.t);
       gain.gain.exponentialRampToValueAtTime(0.01, now + n.t + n.d);
 
       osc.connect(gain);
@@ -224,23 +284,25 @@ export function playRevealFanfare() {
 
   try {
     const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+
     const now = ctx.currentTime;
 
     const chords = [
-      { freqs: [523.25, 659.25, 783.99], time: 0, dur: 0.18 },       // C major
-      { freqs: [587.33, 739.99, 880.00], time: 0.2, dur: 0.18 },     // D major
-      { freqs: [783.99, 987.77, 1174.66], time: 0.4, dur: 0.5 },     // G major
+      { freqs: [523.25, 659.25, 783.99], time: 0, dur: 0.2 },       // C major
+      { freqs: [587.33, 739.99, 880.00], time: 0.22, dur: 0.2 },     // D major
+      { freqs: [783.99, 987.77, 1174.66], time: 0.44, dur: 0.55 },     // G major
     ];
 
-    chords.forEach(chord => {
-      chord.freqs.forEach(freq => {
+    chords.forEach((chord) => {
+      chord.freqs.forEach((freq) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(freq, now + chord.time);
 
-        gain.gain.setValueAtTime(0.18, now + chord.time);
+        gain.gain.setValueAtTime(0.25, now + chord.time);
         gain.gain.exponentialRampToValueAtTime(0.01, now + chord.time + chord.dur);
 
         osc.connect(gain);
@@ -258,9 +320,22 @@ export function playRevealFanfare() {
 /**
  * Pokédex Chinese robotic speech narration
  */
+let cachedVoices: SpeechSynthesisVoice[] = [];
+
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  cachedVoices = window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => {
+    cachedVoices = window.speechSynthesis.getVoices();
+  };
+}
+
 export function stopSpeaking() {
   if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      // ignore
+    }
   }
 }
 
@@ -275,10 +350,13 @@ export function speakPokemonIntro(
 
   if (!('speechSynthesis' in window)) {
     console.warn('Speech synthesis not supported on this device');
+    onSpeakingChange?.(false);
     return;
   }
 
-  stopSpeaking();
+  if (window.speechSynthesis.paused) {
+    window.speechSynthesis.resume();
+  }
 
   const formattedId = String(pokemon.id).padStart(3, '0');
   const typeText = pokemon.types.join('和');
@@ -286,12 +364,13 @@ export function speakPokemonIntro(
 
   const utterance = new SpeechSynthesisUtterance(speechText);
   utterance.lang = 'zh-CN';
-  utterance.rate = 1.02; // slightly snappy anime pace
-  utterance.pitch = 1.05; // slightly cheerful & mechanical
+  utterance.rate = 1.0;
+  utterance.pitch = 1.05;
 
-  // Choose Chinese voice if available
-  const voices = window.speechSynthesis.getVoices();
-  const zhVoice = voices.find(v => v.lang.startsWith('zh') || v.lang.includes('CN') || v.lang.includes('cmn'));
+  const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
+  const zhVoice = voices.find(
+    (v) => v.lang.startsWith('zh') || v.lang.includes('CN') || v.lang.includes('cmn')
+  );
   if (zhVoice) {
     utterance.voice = zhVoice;
   }
@@ -308,7 +387,14 @@ export function speakPokemonIntro(
     onSpeakingChange?.(false);
   };
 
-  window.speechSynthesis.speak(utterance);
+  try {
+    window.speechSynthesis.cancel();
+    setTimeout(() => {
+      window.speechSynthesis.speak(utterance);
+    }, 60);
+  } catch {
+    window.speechSynthesis.speak(utterance);
+  }
 }
 
 /**
@@ -325,7 +411,7 @@ export function triggerHaptic(type: 'click' | 'scan' | 'lock' | 'reveal') {
         navigator.vibrate(35);
         break;
       case 'scan':
-        navigator.vibrate([40, 60, 40, 60, 50]);
+        navigator.vibrate([50, 60, 50, 60, 50]);
         break;
       case 'lock':
         navigator.vibrate([80, 50, 120]);
