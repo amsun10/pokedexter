@@ -14,7 +14,8 @@ import { WhosThatPokemon } from './WhosThatPokemon';
 import { PokedexBook } from './PokedexBook';
 import { ScanNotFound } from './ScanNotFound';
 import { LANModal } from './LANModal';
-import { detectPokemonFromImage, type DetectionResult } from '../services/detector';
+import { ScanAnalyzingOverlay } from './ScanAnalyzingOverlay';
+import { detectPokemonFromImage, getStoredGeminiKey, type DetectionResult } from '../services/detector';
 import {
   isSoundMuted,
   toggleSoundMuted,
@@ -39,6 +40,7 @@ export const PokedexChassis: React.FC = () => {
   // States
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
+  const [frozenImage, setFrozenImage] = useState<string | null>(null);
   const [showLANModal, setShowLANModal] = useState<boolean>(false);
   const [muted, setMuted] = useState<boolean>(isSoundMuted());
 
@@ -56,8 +58,11 @@ export const PokedexChassis: React.FC = () => {
   };
 
   // Frame captured from CameraScanner
-  const handleFrameCaptured = async (canvas: HTMLCanvasElement) => {
+  const handleFrameCaptured = async (canvas: HTMLCanvasElement, dataUrl?: string) => {
     setIsCapturing(false);
+    const snapshot = dataUrl || canvas.toDataURL('image/jpeg', 0.85);
+    setFrozenImage(snapshot);
+    setScanState('scanning');
 
     try {
       const result: DetectionResult | null = await detectPokemonFromImage(canvas);
@@ -103,6 +108,7 @@ export const PokedexChassis: React.FC = () => {
   const handleResetScanner = () => {
     stopSpeaking();
     playButtonClick();
+    setFrozenImage(null);
     setScanState('idle');
     setTargetPokemon(null);
   };
@@ -260,6 +266,12 @@ export const PokedexChassis: React.FC = () => {
             {activeTab === 'book' ? (
               <PokedexBook
                 onSelectPokemon={handleBookSelectPokemon}
+              />
+            ) : scanState === 'scanning' && frozenImage ? (
+              <ScanAnalyzingOverlay
+                imageSrc={frozenImage}
+                onCancel={handleResetScanner}
+                isAiActive={!!getStoredGeminiKey()}
               />
             ) : scanState === 'silhouette' || scanState === 'revealed' ? (
               targetPokemon && (

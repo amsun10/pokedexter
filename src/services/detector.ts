@@ -468,13 +468,39 @@ export async function detectPokemonFromImage(
 }
 
 /**
+ * Helper to compress and downscale canvas image to ~512px for ultra-low latency API upload
+ */
+function getOptimizedBase64(canvas: HTMLCanvasElement, maxDim: number = 512): string {
+  const width = canvas.width;
+  const height = canvas.height;
+
+  if (width <= maxDim && height <= maxDim) {
+    return canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
+  }
+
+  const scale = maxDim / Math.max(width, height);
+  const targetW = Math.round(width * scale);
+  const targetH = Math.round(height * scale);
+
+  const thumbCanvas = document.createElement('canvas');
+  thumbCanvas.width = targetW;
+  thumbCanvas.height = targetH;
+  const ctx = thumbCanvas.getContext('2d');
+  if (ctx) {
+    ctx.drawImage(canvas, 0, 0, targetW, targetH);
+    return thumbCanvas.toDataURL('image/jpeg', 0.75).split(',')[1];
+  }
+  return canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
+}
+
+/**
  * Optional: Direct Gemini Multimodal Vision API call
  */
 async function callGeminiVisionAPI(
   canvas: HTMLCanvasElement,
   apiKey: string
 ): Promise<DetectionResult | null | undefined> {
-  const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+  const base64Data = getOptimizedBase64(canvas, 512);
   
   const prompt = `You are a Pokemon Pokedex scanner. Look at this image and identify which Gen 1 Pokemon (#1 to #151) is present (such as plush toy, card, drawing, figure).
 Return ONLY valid JSON with no markdown formatting:

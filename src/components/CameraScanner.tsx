@@ -3,7 +3,7 @@ import { Camera, SwitchCamera, Upload } from 'lucide-react';
 import { unlockAudioAndSpeech } from '../services/soundEffects';
 
 interface CameraScannerProps {
-  onCaptureFrame: (canvas: HTMLCanvasElement) => void;
+  onCaptureFrame: (canvas: HTMLCanvasElement, dataUrl?: string) => void;
   isScanning: boolean;
 }
 
@@ -75,7 +75,8 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({
     if (!ctx) return;
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    onCaptureFrame(canvas);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    onCaptureFrame(canvas, dataUrl);
   };
 
   // Expose capture method: if live stream active, capture frame; otherwise invoke native camera
@@ -108,7 +109,8 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         ctx.drawImage(img, 0, 0);
-        onCaptureFrame(canvas);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        onCaptureFrame(canvas, dataUrl);
       };
     };
 

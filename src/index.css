@@ -183,3 +183,48 @@
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+/* Hologram Sci-Fi Grid Overlay */
+.hologram-grid {
+  background-image: 
+    linear-gradient(to right, rgba(34, 211, 238, 0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 211, 238, 0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Cyber Scanning Laser Bar */
+@keyframes cyberLaserScan {
+  0% {
+    top: 0%;
+    opacity: 0.85;
+  }
+  50% {
+    top: 96%;
+    opacity: 1;
+  }
+  100% {
+    top: 0%;
+    opacity: 0.85;
+  }
+}
+
+.animate-laser-scan {
+  animation: cyberLaserScan 2.4s ease-in-out infinite;
+}
+
+/* Reticle pulsing target animation */
+@keyframes targetBracketPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.8));
+  }
+  50% {
+    transform: scale(0.96);
+    filter: drop-shadow(0 0 12px rgba(6, 182, 212, 1));
+  }
+}
+
+.animate-target-bracket {
+  animation: targetBracketPulse 1.8s ease-in-out infinite;
+}
+
+
