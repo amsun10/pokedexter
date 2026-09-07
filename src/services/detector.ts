@@ -481,46 +481,54 @@ Return ONLY valid JSON with no markdown formatting:
 If a Pokemon is detected: {"found": true, "pokemonId": number between 1 and 151, "confidence": number between 70 and 99}
 If NO Pokemon is in the image (e.g. random furniture, person, keyboard, wall, coffee mug): {"found": false}`;
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: 'image/jpeg', data: base64Data } }
-          ]
-        }]
-      })
+  const candidateModels = ['gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash-lite'];
+  
+  for (const model of candidateModels) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: prompt },
+                { inline_data: { mime_type: 'image/jpeg', data: base64Data } }
+              ]
+            }]
+          })
+        }
+      );
+
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) continue;
+
+      // Extract JSON from response
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) continue;
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.found === false) {
+        return null; // Explicitly no Pokemon found
+      }
+
+      const pId = Number(parsed.pokemonId);
+      if (pId >= 1 && pId <= 151) {
+        const target = getPokemonById(pId);
+        return {
+          pokemon: target,
+          confidence: parsed.confidence || 95,
+          candidates: [{ pokemon: target, confidence: parsed.confidence || 95 }],
+          source: 'camera'
+        };
+      }
+    } catch {
+      continue;
     }
-  );
-
-  if (!response.ok) return undefined;
-
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) return undefined;
-
-  // Extract JSON from response
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return undefined;
-
-  const parsed = JSON.parse(jsonMatch[0]);
-  if (parsed.found === false) {
-    return null; // Explicitly no Pokemon found
-  }
-
-  const pId = Number(parsed.pokemonId);
-  if (pId >= 1 && pId <= 151) {
-    const target = getPokemonById(pId);
-    return {
-      pokemon: target,
-      confidence: parsed.confidence || 95,
-      candidates: [{ pokemon: target, confidence: parsed.confidence || 95 }],
-      source: 'camera'
-    };
   }
 
   return undefined;
