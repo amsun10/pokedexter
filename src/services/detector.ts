@@ -481,7 +481,7 @@ Return ONLY valid JSON with no markdown formatting:
 If a Pokemon is detected: {"found": true, "pokemonId": number between 1 and 151, "confidence": number between 70 and 99}
 If NO Pokemon is in the image (e.g. random furniture, person, keyboard, wall, coffee mug): {"found": false}`;
 
-  const candidateModels = ['gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash-lite'];
+  const candidateModels = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
   
   for (const model of candidateModels) {
     try {
