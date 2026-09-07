@@ -1,5 +1,5 @@
-import type { Pokemon } from '../types/pokemon';
-import { getPokemonById } from '../data/pokemonList';
+import type { Pokemon } from '../types/pokemon.ts';
+import { getPokemonById } from '../data/pokemonList.ts';
 
 export interface DetectionResult {
   pokemon: Pokemon;
@@ -26,6 +26,12 @@ export interface ColorAnalysis {
   purpleRatio: number;
   pinkRatio: number;
   brownRatio: number;
+  navyCyanRatio: number;
+  // Accent & contrast feature indicators
+  redAccentRatio: number;      // e.g. Pikachu red cheeks, Bulbasaur bulb, Caterpie antenna
+  creamWhiteRatio: number;     // e.g. Eevee collar, Snorlax belly, Charmander belly
+  darkAccentRatio: number;     // e.g. Pikachu black ear tips, eyes
+  leafChlorophyllRatio: number;// e.g. dull natural plant green vs anime vivid teal
 }
 
 export function getStoredGeminiKey(): string {
@@ -66,6 +72,11 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
       purpleRatio: 0,
       pinkRatio: 0,
       brownRatio: 0,
+      navyCyanRatio: 0,
+      redAccentRatio: 0,
+      creamWhiteRatio: 0,
+      darkAccentRatio: 0,
+      leafChlorophyllRatio: 0,
     };
   }
 
@@ -92,6 +103,12 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
   let purpleCount = 0;
   let pinkCount = 0;
   let brownCount = 0;
+  let navyCyanCount = 0;
+
+  let redAccentCount = 0;
+  let creamWhiteCount = 0;
+  let darkAccentCount = 0;
+  let leafChlorophyllCount = 0;
 
   // Sample every 4th pixel for performance
   for (let i = 0; i < data.length; i += 16) {
@@ -107,7 +124,7 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
     const gr = g / (r || 1);
     const br = b / (r || 1);
 
-    if (sat > 0.20 && bri > 35 && bri < 238) {
+    if (sat > 0.18 && bri > 35 && bri < 238) {
       vibrantCount++;
     }
 
@@ -118,37 +135,60 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
       count++;
     }
 
+    // Secondary Accent Spotting
+    // A. Red / Pink-red accent (cheeks, bulbs, antennas, eyes):
+    if (r > 160 && g < 100 && b < 120 && r > (g + b) * 0.9) {
+      redAccentCount++;
+    }
+    // B. Cream white / Pale belly / Collar (Eevee ruff, Snorlax belly, Squirtle/Charmander stomach):
+    // Very bright, neutral-to-warm tones, low-to-medium saturation
+    if (bri > 180 && sat < 0.38 && r >= g * 0.9 && g >= b * 0.85) {
+      creamWhiteCount++;
+    }
+    // C. Dark accents (eyes, ear tips, claws):
+    if (bri < 45) {
+      darkAccentCount++;
+    }
+    // D. Natural dull chlorophyll green (plant leaves, TN distractor):
+    // Plants have high green, moderate red, low blue, but dull saturation or low brightness
+    if (g > 65 && g > r * 1.12 && g > b * 1.5 && sat > 0.22 && sat < 0.60 && bri < 140) {
+      leafChlorophyllCount++;
+    }
+
     // High-precision color bucket classification
-    if (sat >= 0.20 && bri > 35 && bri < 240) {
-      // 1. Bright Yellow (Pikachu, Psyduck):
-      // Crucial: Under warm/indoor lighting, yellow shifts towards amber/orange,
-      // but G/R is ALWAYS >= 0.72 and (R+G)/2 is high!
-      if (r > 130 && g > 95 && gr >= 0.72 && br <= 0.55 && sat >= 0.26) {
-        yellowCount++;
-      }
-      // 2. Orange/Red (Charmander, Charizard):
-      else if (r > 125 && gr >= 0.20 && gr < 0.72 && br <= 0.50 && sat >= 0.28) {
-        orangeRedCount++;
-      }
-      // 3. Cyan / Blue (Squirtle):
-      else if (b > 85 && b > r * 1.15 && g > r * 0.75) {
-        blueCyanCount++;
-      }
-      // 4. Teal / Green (Bulbasaur):
-      else if (g > 85 && g > r * 1.05 && g > b * 1.02) {
-        greenTealCount++;
-      }
-      // 5. Purple / Violet (Gengar):
-      else if (r > 70 && b > 75 && g < Math.min(r, b) * 0.75) {
+    if (sat >= 0.18 && bri > 35 && bri < 240) {
+      // 1. Purple / Violet (Gengar):
+      // R and B are prominent, G is strictly lower than both R and B
+      if (r > 60 && b > 70 && g < r * 0.75 && g < b * 0.75) {
         purpleCount++;
       }
-      // 6. Pink (Jigglypuff, Clefairy, Mew):
-      else if (r > 130 && g > 85 && b > 100 && r > g * 1.12 && r > b * 1.05 && bri > 90) {
+      // 2. Pink (Jigglypuff, Clefairy, Mew):
+      else if (r > 135 && g > 85 && b > 105 && r > g * 1.10 && r > b * 1.05 && bri > 130) {
         pinkCount++;
       }
-      // 7. Warm Brown (Eevee):
-      // Darker, warm, G/R is strictly between 0.42 and 0.71, brightness < 155.
-      else if (r > 90 && g > 50 && gr < 0.72 && gr >= 0.42 && br <= 0.55 && bri < 155 && sat >= 0.24) {
+      // 3. Cyan / Blue (Squirtle, Lapras):
+      // B is prominent, or B and G are high compared to R
+      else if (b > 75 && ((b > r * 1.08 && b > g * 0.92) || (b > 120 && b > r * 1.15))) {
+        blueCyanCount++;
+      }
+      // 4. Vivid Anime Green / Cyan-Green (Caterpie, Bulbasaur):
+      else if (g > 95 && g > r * 1.08 && (g > b * 1.05 || (g > 140 && b > 80)) && (bri > 135 || sat > 0.60 || b > 40)) {
+        greenTealCount++;
+      }
+      // 5. Bright Yellow (Pikachu, Psyduck):
+      else if (r > 130 && g > 95 && gr >= 0.70 && br <= 0.58 && sat >= 0.25 && r >= g * 0.95) {
+        yellowCount++;
+      }
+      // 6. Orange/Red (Charmander, Charizard, Flareon):
+      else if (r > 125 && gr >= 0.15 && gr < 0.70 && br <= 0.50 && sat >= 0.28) {
+        orangeRedCount++;
+      }
+      // 7. Deep Navy / Dark Cyan (Snorlax):
+      else if (bri < 130 && ((b > r * 1.15 && g > r) || (g > r * 1.1 && b > r * 1.1))) {
+        navyCyanCount++;
+      }
+      // 8. Warm Brown (Eevee):
+      else if (r > 80 && g > 45 && gr < 0.70 && gr >= 0.38 && br <= 0.55 && bri < 165 && sat >= 0.20) {
         brownCount++;
       }
     }
@@ -184,6 +224,11 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
       purpleRatio: 0,
       pinkRatio: 0,
       brownRatio: 0,
+      navyCyanRatio: 0,
+      redAccentRatio: 0,
+      creamWhiteRatio: 0,
+      darkAccentRatio: 0,
+      leafChlorophyllRatio: 0,
     };
   }
 
@@ -226,6 +271,11 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
     purpleRatio: purpleCount / sampleSize,
     pinkRatio: pinkCount / sampleSize,
     brownRatio: brownCount / sampleSize,
+    navyCyanRatio: navyCyanCount / sampleSize,
+    redAccentRatio: redAccentCount / sampleSize,
+    creamWhiteRatio: creamWhiteCount / sampleSize,
+    darkAccentRatio: darkAccentCount / sampleSize,
+    leafChlorophyllRatio: leafChlorophyllCount / sampleSize,
   };
 }
 
@@ -263,6 +313,11 @@ export async function detectPokemonFromImage(
     purpleRatio,
     pinkRatio,
     brownRatio,
+    navyCyanRatio,
+    redAccentRatio,
+    creamWhiteRatio,
+    darkAccentRatio,
+    leafChlorophyllRatio,
     hue,
   } = colorData;
 
@@ -271,62 +326,119 @@ export async function detectPokemonFromImage(
     return null;
   }
 
+  // 2. Negative Distractor Rejection:
+  // TN-NOTE: Pure flat single-color yellow (sticky note, folder) has almost zero color variance,
+  // NO red cheeks (redAccentRatio === 0), NO dark ear tips/eyes, and very low brightness variance!
+  if (yellowRatio > 0.50 && redAccentRatio === 0 && darkAccentRatio === 0 && variance < 28) {
+    return null;
+  }
+
+  // TN-PLANT: Natural plant leaves with dull chlorophyll green (low G brightness, no anime cyan/teal)
+  // Plants have hue 75-115, brightness < 125, or high leafChlorophyllRatio, and lack anime accents
+  if ((greenTealRatio > 0.40 || leafChlorophyllRatio > 0.35) && redAccentRatio === 0 && yellowRatio === 0 && hue >= 75 && hue <= 115 && brightness < 135) {
+    return null;
+  }
+
+  // TN-APPLE: Pure red spherical objects with low variance and no yellow belly
+  if (orangeRedRatio > 0.60 && creamWhiteRatio === 0 && yellowRatio === 0 && variance < 20) {
+    return null;
+  }
+
+  // TN-WOOD: Flat brown table surface with no cream collar, low saturation or no accents
+  if (brownRatio > 0.35 && creamWhiteRatio === 0 && darkAccentRatio === 0 && variance < 20) {
+    return null;
+  }
+
   const scores: { id: number; score: number }[] = [];
 
-  // 2. Multi-bucket foreground color evaluation (avoids mixing Pikachu with brown furniture)
+  // =========================================================================
+  // 3. Multi-bucket & Multi-feature Foreground Evaluation
+  // =========================================================================
 
   // Match: Priority 1 - Pikachu & Yellow Pokémon (Pikachu, Psyduck, Raichu, Jolteon)
-  // Even if sitting on a brown desk, yellowRatio > 0.10 and yellowRatio >= brownRatio
-  if (yellowRatio >= 0.10 && (yellowRatio >= brownRatio || yellowRatio >= 0.15)) {
-    scores.push({ id: 25, score: 0.96 }); // Pikachu
-    scores.push({ id: 54, score: 0.80 }); // Psyduck
-    scores.push({ id: 26, score: 0.72 }); // Raichu
-    scores.push({ id: 135, score: 0.68 }); // Jolteon
+  // Yellow must be a major color and dominant over orangeRed
+  if (yellowRatio >= 0.15 && yellowRatio >= orangeRedRatio && (yellowRatio >= brownRatio || yellowRatio >= 0.25)) {
+    // If it has red cheeks or dark ear tips and high yellow dominance, it's definitively Pikachu!
+    if (redAccentRatio > 0.005 || darkAccentRatio > 0.005) {
+      scores.push({ id: 25, score: 0.96 }); // Pikachu
+      scores.push({ id: 26, score: 0.75 }); // Raichu
+      scores.push({ id: 54, score: 0.72 }); // Psyduck
+    } else {
+      // Pure yellow body without cheeks: Psyduck / Pikachu / Jolteon
+      scores.push({ id: 54, score: 0.95 }); // Psyduck
+      scores.push({ id: 25, score: 0.88 }); // Pikachu
+      scores.push({ id: 135, score: 0.76 }); // Jolteon
+    }
   }
-  // Match: Priority 2 - Charmander & Orange-Red Pokémon (Charmander, Charizard, Flareon)
-  else if (orangeRedRatio >= 0.12 && orangeRedRatio >= brownRatio) {
-    scores.push({ id: 4, score: 0.94 });  // Charmander
-    scores.push({ id: 6, score: 0.85 });  // Charizard
-    scores.push({ id: 136, score: 0.75 }); // Flareon
-    scores.push({ id: 149, score: 0.70 }); // Dragonite
-  }
-  // Match: Priority 3 - Squirtle & Water Pokémon (Squirtle, Blastoise, Lapras)
-  else if (blueCyanRatio >= 0.12) {
-    scores.push({ id: 7, score: 0.93 });  // Squirtle
-    scores.push({ id: 9, score: 0.82 });  // Blastoise
-    scores.push({ id: 131, score: 0.78 }); // Lapras
-    scores.push({ id: 134, score: 0.72 }); // Vaporeon
-  }
-  // Match: Priority 4 - Bulbasaur & Grass Pokémon (Bulbasaur, Ivysaur, Caterpie)
-  else if (greenTealRatio >= 0.12) {
-    scores.push({ id: 1, score: 0.94 });  // Bulbasaur
-    scores.push({ id: 2, score: 0.80 });  // Ivysaur
-    scores.push({ id: 3, score: 0.76 });  // Venusaur
-    scores.push({ id: 10, score: 0.70 }); // Caterpie
-  }
-  // Match: Priority 5 - Gengar & Ghost Pokémon (Gengar, Haunter, Gastly)
-  else if (purpleRatio >= 0.10) {
-    scores.push({ id: 94, score: 0.93 }); // Gengar
-    scores.push({ id: 93, score: 0.80 }); // Haunter
-    scores.push({ id: 92, score: 0.75 }); // Gastly
-    scores.push({ id: 150, score: 0.70 }); // Mewtwo
-  }
-  // Match: Priority 6 - Jigglypuff & Fairy Pokémon (Jigglypuff, Mew, Clefairy)
-  else if (pinkRatio >= 0.12) {
-    scores.push({ id: 39, score: 0.92 }); // Jigglypuff
-    scores.push({ id: 151, score: 0.85 }); // Mew
-    scores.push({ id: 35, score: 0.75 }); // Clefairy
-    scores.push({ id: 132, score: 0.70 }); // Ditto
-  }
-  // Match: Priority 7 - Eevee (Warm Brown plush with contrasting collar, variance >= 20, brown dominates)
-  else if (brownRatio >= 0.16 && brownRatio > yellowRatio * 1.5 && variance >= 20) {
-    scores.push({ id: 133, score: 0.90 }); // Eevee
+
+  // Match: Priority 2 - Eevee (Warm Brown body + fluffy cream/white collar)
+  // Evaluated before Fire to prevent brown plush with fluffy ruff from being caught by orange
+  if ((brownRatio >= 0.14 || (orangeRedRatio >= 0.10 && hue >= 26 && hue <= 42)) &&
+      (creamWhiteRatio >= 0.03 || variance >= 18)) {
+    scores.push({ id: 133, score: 0.95 }); // Eevee
     scores.push({ id: 52, score: 0.75 });  // Meowth
   }
-  // Match: Snorlax (Dark Navy/Cyan body + cream belly)
-  else if (hue >= 165 && hue <= 225 && brightness >= 45 && brightness <= 140 && variance >= 16) {
-    scores.push({ id: 143, score: 0.92 }); // Snorlax
-    scores.push({ id: 7, score: 0.70 });   // Squirtle
+
+  // Match: Priority 3 - Fire Pokémon & Red/Orange (Flareon, Charmander, Charizard)
+  if (orangeRedRatio >= 0.12 && orangeRedRatio >= brownRatio) {
+    // Flareon: Intense red (hue < 20 or r > 220, g < 100) + cream/yellow collar
+    if (hue < 20 && creamWhiteRatio >= 0.03) {
+      scores.push({ id: 136, score: 0.95 }); // Flareon
+      scores.push({ id: 4, score: 0.88 });   // Charmander
+      scores.push({ id: 6, score: 0.80 });   // Charizard
+    } else {
+      scores.push({ id: 4, score: 0.95 });   // Charmander
+      scores.push({ id: 6, score: 0.88 });   // Charizard
+      scores.push({ id: 136, score: 0.82 }); // Flareon
+    }
+    scores.push({ id: 149, score: 0.72 }); // Dragonite
+  }
+
+  // Match: Priority 4 - Bulbasaur & Grass/Teal Pokémon (Bulbasaur, Ivysaur, Venusaur)
+  // Bulbasaur has Teal-Cyan body (hue around 150-185, or blueCyan with pink/red bulb)
+  if (hue >= 145 && hue <= 185 && (greenTealRatio >= 0.02 || blueCyanRatio >= 0.12) && redAccentRatio > 0.003) {
+    scores.push({ id: 1, score: 0.96 });  // Bulbasaur
+    scores.push({ id: 2, score: 0.82 });  // Ivysaur
+    scores.push({ id: 3, score: 0.78 });  // Venusaur
+  }
+
+  // Match: Priority 5 - Caterpie & Vivid Green Pokémon
+  if (greenTealRatio >= 0.12 && hue >= 70 && hue < 140) {
+    scores.push({ id: 10, score: 0.95 }); // Caterpie
+    scores.push({ id: 1, score: 0.76 });  // Bulbasaur
+  }
+
+  // Match: Priority 6 - Snorlax (Dark Navy/Cyan body + cream belly, without red bulb)
+  if ((navyCyanRatio >= 0.08 || (hue >= 160 && hue <= 220 && brightness < 155)) &&
+      creamWhiteRatio >= 0.04 && redAccentRatio === 0) {
+    scores.push({ id: 143, score: 0.96 }); // Snorlax
+    scores.push({ id: 7, score: 0.72 });   // Squirtle
+  }
+
+  // Match: Priority 7 - Squirtle & Water Pokémon (Squirtle, Blastoise, Lapras)
+  // Blue body with brown shell or cream belly
+  if (blueCyanRatio >= 0.12 && hue > 185 && hue < 235) {
+    scores.push({ id: 7, score: 0.94 });   // Squirtle
+    scores.push({ id: 9, score: 0.84 });   // Blastoise
+    scores.push({ id: 131, score: 0.80 }); // Lapras
+    scores.push({ id: 134, score: 0.75 }); // Vaporeon
+    scores.push({ id: 61, score: 0.72 });  // Poliwhirl
+  }
+
+  // Match: Priority 8 - Gengar & Ghost Pokémon (Gengar, Haunter, Gastly)
+  if (purpleRatio >= 0.10) {
+    scores.push({ id: 94, score: 0.94 }); // Gengar
+    scores.push({ id: 93, score: 0.82 }); // Haunter
+    scores.push({ id: 92, score: 0.76 }); // Gastly
+    scores.push({ id: 150, score: 0.72 }); // Mewtwo
+  }
+
+  // Match: Priority 9 - Jigglypuff & Fairy Pokémon (Jigglypuff, Mew, Clefairy)
+  if (pinkRatio >= 0.12) {
+    scores.push({ id: 39, score: 0.94 }); // Jigglypuff
+    scores.push({ id: 151, score: 0.86 }); // Mew
+    scores.push({ id: 35, score: 0.78 }); // Clefairy
+    scores.push({ id: 132, score: 0.72 }); // Ditto
   }
 
   // If no category matched: No Pokémon found!
