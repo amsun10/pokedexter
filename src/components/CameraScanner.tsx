@@ -211,21 +211,21 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({
       {/* Targeting HUD & Reticle */}
       <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4">
         {/* Radar Corner Brackets */}
-        <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center">
+        <div className="relative w-[200px] h-[200px] sm:w-[240px] sm:h-[240px] flex items-center justify-center">
           {/* Top-Left Bracket */}
-          <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-400/80 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+          <div className="absolute top-0 left-0 w-6 h-6 border-t-[3px] border-l-[3px] border-emerald-400/85 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
           {/* Top-Right Bracket */}
-          <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-400/80 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+          <div className="absolute top-0 right-0 w-6 h-6 border-t-[3px] border-r-[3px] border-emerald-400/85 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
           {/* Bottom-Left Bracket */}
-          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-400/80 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+          <div className="absolute bottom-0 left-0 w-6 h-6 border-b-[3px] border-l-[3px] border-emerald-400/85 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
           {/* Bottom-Right Bracket */}
-          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-400/80 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+          <div className="absolute bottom-0 right-0 w-6 h-6 border-b-[3px] border-r-[3px] border-emerald-400/85 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
 
           {/* Crosshair Center */}
-          <div className="relative w-12 h-12 flex items-center justify-center">
+          <div className="relative w-10 h-10 flex items-center justify-center">
             <div className="w-full h-0.5 bg-emerald-400/60" />
             <div className="h-full w-0.5 bg-emerald-400/60 absolute" />
-            <div className="w-3 h-3 rounded-full border border-emerald-400 shadow-[0_0_6px_rgba(52,211,153,1)] absolute" />
+            <div className="w-2.5 h-2.5 rounded-full border border-emerald-400 shadow-[0_0_6px_rgba(52,211,153,1)] absolute" />
           </div>
 
           {/* Scanning Radar Laser Line */}
@@ -234,7 +234,7 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({
           )}
 
           {/* Scan Target Text */}
-          <div className="absolute -bottom-8 bg-black/70 px-3 py-0.5 rounded text-[11px] font-mono-tech text-emerald-300 tracking-wider flex items-center space-x-1.5 border border-emerald-500/40">
+          <div className="absolute -bottom-7 sm:-bottom-8 bg-black/75 px-3 py-0.5 rounded text-[11px] font-mono-tech text-emerald-300 tracking-wider flex items-center space-x-1.5 border border-emerald-500/40 backdrop-blur-sm whitespace-nowrap">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
             <span>{isScanning ? '正在分析毛绒玩具特征...' : '对准毛绒玩具 / 卡片'}</span>
           </div>

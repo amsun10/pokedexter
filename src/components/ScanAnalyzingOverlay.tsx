@@ -42,34 +42,34 @@ export const ScanAnalyzingOverlay: React.FC<ScanAnalyzingOverlayProps> = ({
 
       {/* 6. Targeting Reticle / Corner Brackets */}
       <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4 z-20">
-        <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center animate-target-bracket">
+        <div className="relative w-[200px] h-[200px] sm:w-[240px] sm:h-[240px] flex items-center justify-center animate-target-bracket">
           {/* Top-Left Corner */}
-          <div className="absolute top-0 left-0 w-9 h-9 border-t-4 border-l-4 border-cyan-400 shadow-[0_0_10px_#22d3ee]" />
+          <div className="absolute top-0 left-0 w-7 h-7 border-t-[3px] border-l-[3px] border-cyan-400 shadow-[0_0_10px_#22d3ee]" />
           {/* Top-Right Corner */}
-          <div className="absolute top-0 right-0 w-9 h-9 border-t-4 border-r-4 border-cyan-400 shadow-[0_0_10px_#22d3ee]" />
+          <div className="absolute top-0 right-0 w-7 h-7 border-t-[3px] border-r-[3px] border-cyan-400 shadow-[0_0_10px_#22d3ee]" />
           {/* Bottom-Left Corner */}
-          <div className="absolute bottom-0 left-0 w-9 h-9 border-b-4 border-l-4 border-cyan-400 shadow-[0_0_10px_#22d3ee]" />
+          <div className="absolute bottom-0 left-0 w-7 h-7 border-b-[3px] border-l-[3px] border-cyan-400 shadow-[0_0_10px_#22d3ee]" />
           {/* Bottom-Right Corner */}
-          <div className="absolute bottom-0 right-0 w-9 h-9 border-b-4 border-r-4 border-cyan-400 shadow-[0_0_10px_#22d3ee]" />
+          <div className="absolute bottom-0 right-0 w-7 h-7 border-b-[3px] border-r-[3px] border-cyan-400 shadow-[0_0_10px_#22d3ee]" />
 
           {/* Central Target Cross */}
-          <div className="relative w-16 h-16 flex items-center justify-center">
+          <div className="relative w-12 h-12 flex items-center justify-center">
             <div className="w-full h-0.5 bg-cyan-400/80 shadow-[0_0_6px_#22d3ee]" />
             <div className="h-full w-0.5 bg-cyan-400/80 absolute shadow-[0_0_6px_#22d3ee]" />
-            <div className="w-5 h-5 rounded-full border border-cyan-300 shadow-[0_0_10px_#22d3ee] absolute animate-ping opacity-60" />
-            <div className="w-2.5 h-2.5 rounded-full bg-cyan-300 shadow-[0_0_8px_#22d3ee] absolute" />
+            <div className="w-4 h-4 rounded-full border border-cyan-300 shadow-[0_0_10px_#22d3ee] absolute animate-ping opacity-60" />
+            <div className="w-2 h-2 rounded-full bg-cyan-300 shadow-[0_0_8px_#22d3ee] absolute" />
           </div>
 
           {/* HUD Tech Readout Badge */}
-          <div className="absolute -bottom-10 flex flex-col items-center space-y-1">
-            <div className="bg-black/85 border border-cyan-500/70 px-3.5 py-1 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.6)] flex items-center space-x-2 backdrop-blur-sm">
+          <div className="absolute -bottom-9 sm:-bottom-10 flex flex-col items-center space-y-0.5 whitespace-nowrap">
+            <div className="bg-black/85 border border-cyan-500/70 px-3 py-1 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.6)] flex items-center space-x-2 backdrop-blur-sm">
               <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping inline-block" />
               <Cpu className="w-3.5 h-3.5 text-cyan-300 animate-spin" style={{ animationDuration: '4s' }} />
               <span className="text-xs font-tech font-bold text-cyan-200 tracking-wider">
                 {isAiActive ? 'AI 多模态神经识别中...' : '图鉴光学特征比对中...'}
               </span>
             </div>
-            <span className="text-[10px] font-mono-tech text-cyan-400/80 tracking-widest uppercase">
+            <span className="text-[9px] font-mono-tech text-cyan-400/80 tracking-widest uppercase">
               SCANNING TARGET MATRIX
             </span>
           </div>
