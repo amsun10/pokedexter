@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Smartphone, X, Copy, Check, Wifi, Share2 } from 'lucide-react';
 import {
   getStoredGeminiKey,
@@ -21,14 +22,28 @@ export const LANModal: React.FC<LANModalProps> = ({ isOpen, onClose }) => {
   const [deepSeekKey, setDeepSeekKey] = useState(getStoredDeepSeekKey());
   const [geminiKey, setGeminiKey] = useState(getStoredGeminiKey());
 
+  const isMobileDevice = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const [showLanGuide, setShowLanGuide] = useState(!isMobileDevice);
+
+  // Sync latest stored keys whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setProvider(getStoredAiProvider());
+      setDeepSeekKey(getStoredDeepSeekKey());
+      setGeminiKey(getStoredGeminiKey());
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const currentUrl = window.location.href;
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(currentUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(currentUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleProviderChange = (p: AiProvider) => {
@@ -36,11 +51,13 @@ export const LANModal: React.FC<LANModalProps> = ({ isOpen, onClose }) => {
     setStoredAiProvider(p);
   };
 
-  const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const [showLanGuide, setShowLanGuide] = useState(!isMobileDevice);
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain">
+  const modalContent = (
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain"
+    >
       <div className="bg-zinc-900 border-2 border-red-500/80 rounded-2xl max-w-sm w-full max-h-[calc(100dvh-24px)] overflow-y-auto p-4 sm:p-5 shadow-2xl relative text-zinc-100 space-y-3.5 my-auto flex flex-col min-w-0">
         {/* Close Button */}
         <button
@@ -194,11 +211,15 @@ export const LANModal: React.FC<LANModalProps> = ({ isOpen, onClose }) => {
 
         <button
           onClick={onClose}
-          className="w-full bg-red-600 hover:bg-red-500 font-tech font-bold text-white py-2 rounded-xl transition active:scale-95 shadow-lg text-xs sm:text-sm flex-shrink-0"
+          className="w-full bg-red-600 hover:bg-red-500 font-tech font-bold text-white py-2 rounded-xl transition active:scale-95 shadow-lg text-xs sm:text-sm flex-shrink-0 cursor-pointer"
         >
           保存并开始体验
         </button>
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : modalContent;
 };
