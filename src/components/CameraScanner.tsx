@@ -46,6 +46,14 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({
           video.srcObject = stream;
           video.setAttribute('playsinline', 'true');
           video.setAttribute('webkit-playsinline', 'true');
+          
+          // Auto resume if iOS ever pauses the stream
+          video.onpause = () => {
+            if (video.srcObject) {
+              video.play().catch(() => {});
+            }
+          };
+
           try {
             await video.play();
             setIsCameraReady(true);
@@ -145,13 +153,14 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({
             muted
             controls={false}
             disablePictureInPicture
+            disableRemotePlayback
             onLoadedMetadata={() => {
               videoRef.current?.play().catch(() => {});
             }}
             onPlaying={() => {
               setIsCameraReady(true);
             }}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${
+            className={`w-full h-full object-cover pointer-events-none select-none transition-opacity duration-300 ${
               isCameraReady ? 'opacity-100' : 'opacity-0'
             }`}
           />
