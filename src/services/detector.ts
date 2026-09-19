@@ -34,6 +34,24 @@ export interface ColorAnalysis {
   leafChlorophyllRatio: number;// e.g. dull natural plant green vs anime vivid teal
 }
 
+export type AiProvider = 'deepseek' | 'gemini';
+
+export function getStoredDeepSeekKey(): string {
+  try {
+    return localStorage.getItem('pokedex_deepseek_key') || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setStoredDeepSeekKey(key: string): void {
+  try {
+    localStorage.setItem('pokedex_deepseek_key', key.trim());
+  } catch {
+    // ignore
+  }
+}
+
 export function getStoredGeminiKey(): string {
   try {
     return localStorage.getItem('pokedex_gemini_key') || '';
@@ -45,6 +63,26 @@ export function getStoredGeminiKey(): string {
 export function setStoredGeminiKey(key: string): void {
   try {
     localStorage.setItem('pokedex_gemini_key', key.trim());
+  } catch {
+    // ignore
+  }
+}
+
+export function getStoredAiProvider(): AiProvider {
+  try {
+    const p = localStorage.getItem('pokedex_ai_provider');
+    if (p === 'gemini' || p === 'deepseek') return p;
+    if (getStoredDeepSeekKey()) return 'deepseek';
+    if (getStoredGeminiKey()) return 'gemini';
+    return 'deepseek';
+  } catch {
+    return 'deepseek';
+  }
+}
+
+export function setStoredAiProvider(provider: AiProvider): void {
+  try {
+    localStorage.setItem('pokedex_ai_provider', provider);
   } catch {
     // ignore
   }
@@ -287,17 +325,42 @@ export async function detectPokemonFromImage(
   canvas: HTMLCanvasElement,
   apiKey?: string
 ): Promise<DetectionResult | null> {
-  // If user provided or stored a Gemini Vision API key, call vision API
-  const effectiveKey = (apiKey || '').trim() || getStoredGeminiKey();
-  if (effectiveKey.length > 15) {
+  const provider = getStoredAiProvider();
+  const dsKey = getStoredDeepSeekKey();
+  const geminiKey = (apiKey || '').trim() || getStoredGeminiKey();
+
+  // Try active provider first
+  if (provider === 'deepseek' && dsKey.length > 10) {
     try {
-      const apiResult = await callGeminiVisionAPI(canvas, effectiveKey);
-      if (apiResult !== undefined) {
-        return apiResult;
+      const dsResult = await callDeepSeekVisionAPI(canvas, dsKey);
+      if (dsResult !== undefined) {
+        return dsResult;
       }
     } catch (e) {
-      console.warn('Vision API fallback to local classifier:', e);
+      console.warn('DeepSeek Vision API error, attempting fallback:', e);
     }
+  } else if (provider === 'gemini' && geminiKey.length > 10) {
+    try {
+      const geminiResult = await callGeminiVisionAPI(canvas, geminiKey);
+      if (geminiResult !== undefined) {
+        return geminiResult;
+      }
+    } catch (e) {
+      console.warn('Gemini Vision API error, attempting fallback:', e);
+    }
+  }
+
+  // Cross-fallback if the other key is available
+  if (provider === 'deepseek' && geminiKey.length > 10) {
+    try {
+      const geminiResult = await callGeminiVisionAPI(canvas, geminiKey);
+      if (geminiResult !== undefined) return geminiResult;
+    } catch {}
+  } else if (provider === 'gemini' && dsKey.length > 10) {
+    try {
+      const dsResult = await callDeepSeekVisionAPI(canvas, dsKey);
+      if (dsResult !== undefined) return dsResult;
+    } catch {}
   }
 
   // Local color & shape heuristic classifier
@@ -559,3 +622,77 @@ If NO Pokemon is in the image (e.g. random furniture, person, keyboard, wall, co
 
   return undefined;
 }
+
+/**
+ * Direct DeepSeek Multimodal Vision API call (using deepseek-flash / deepseek-v4-flash-vision-exp)
+ */
+async function callDeepSeekVisionAPI(
+  canvas: HTMLCanvasElement,
+  apiKey: string
+): Promise<DetectionResult | null | undefined> {
+  const base64Data = getOptimizedBase64(canvas, 512);
+
+  const prompt = `You are a Pokemon Pokedex scanner. Look at this image and identify which Gen 1 Pokemon (#1 to #151) is present (such as plush toy, card, drawing, figure).
+Return ONLY valid JSON with no markdown formatting:
+If a Pokemon is detected: {"found": true, "pokemonId": number between 1 and 151, "confidence": number between 70 and 99}
+If NO Pokemon is in the image (e.g. random furniture, person, keyboard, wall, coffee mug): {"found": false}`;
+
+  const candidateModels = ['deepseek-flash', 'deepseek-v4-flash-vision-exp'];
+
+  for (const model of candidateModels) {
+    try {
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                {
+                  type: 'image_url',
+                  image_url: { url: `data:image/jpeg;base64,${base64Data}` }
+                }
+              ]
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const text = data?.choices?.[0]?.message?.content;
+      if (!text) continue;
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) continue;
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.found === false) {
+        return null;
+      }
+
+      const pId = Number(parsed.pokemonId);
+      if (pId >= 1 && pId <= 151) {
+        const target = getPokemonById(pId);
+        return {
+          pokemon: target,
+          confidence: parsed.confidence || 96,
+          candidates: [{ pokemon: target, confidence: parsed.confidence || 96 }],
+          source: 'camera'
+        };
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return undefined;
+}
+

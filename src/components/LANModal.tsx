@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { Smartphone, X, Copy, Check, Wifi, Share2 } from 'lucide-react';
-import { getStoredGeminiKey, setStoredGeminiKey } from '../services/detector';
+import {
+  getStoredGeminiKey,
+  setStoredGeminiKey,
+  getStoredDeepSeekKey,
+  setStoredDeepSeekKey,
+  getStoredAiProvider,
+  setStoredAiProvider,
+  type AiProvider
+} from '../services/detector';
 
 interface LANModalProps {
   isOpen: boolean;
@@ -9,7 +17,9 @@ interface LANModalProps {
 
 export const LANModal: React.FC<LANModalProps> = ({ isOpen, onClose }) => {
   const [copied, setCopied] = useState(false);
-  const [apiKey, setApiKey] = useState(getStoredGeminiKey());
+  const [provider, setProvider] = useState<AiProvider>(getStoredAiProvider());
+  const [deepSeekKey, setDeepSeekKey] = useState(getStoredDeepSeekKey());
+  const [geminiKey, setGeminiKey] = useState(getStoredGeminiKey());
 
   if (!isOpen) return null;
 
@@ -19,6 +29,11 @@ export const LANModal: React.FC<LANModalProps> = ({ isOpen, onClose }) => {
     navigator.clipboard.writeText(currentUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleProviderChange = (p: AiProvider) => {
+    setProvider(p);
+    setStoredAiProvider(p);
   };
 
   return (
@@ -77,29 +92,83 @@ export const LANModal: React.FC<LANModalProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          {/* Optional Gemini Vision AI Key */}
-          <div className="bg-gradient-to-r from-purple-950/40 to-indigo-950/40 p-3 rounded-xl border border-purple-800/60 space-y-1.5">
+          {/* AI Vision Engine Selection & Keys */}
+          <div className="bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-indigo-950/40 p-3 rounded-xl border border-blue-700/50 space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-purple-300 font-bold text-xs flex items-center">
-                ✨ AI 视觉增强识别 (可选)
+              <span className="text-blue-300 font-bold text-xs flex items-center">
+                ✨ AI 多模态视觉引擎
               </span>
-              {apiKey && (
-                <span className="text-[10px] text-emerald-400 font-tech">已启用 AI</span>
-              )}
+              <span className="text-[10px] text-emerald-400 font-tech">
+                {provider === 'deepseek' && deepSeekKey
+                  ? '已启用 DeepSeek'
+                  : provider === 'gemini' && geminiKey
+                  ? '已启用 Gemini'
+                  : '使用本地算法'}
+              </span>
             </div>
-            <p className="text-[10px] text-zinc-400">
-              输入 Google Gemini API Key 可开启超高精度多模态 AI 识别，准确分辨各种玩偶姿态与卡片（可在 aistudio.google.com 免费获取）：
-            </p>
-            <input
-              type="password"
-              placeholder="粘贴 AI Studio API Key..."
-              value={apiKey}
-              onChange={(e) => {
-                setApiKey(e.target.value);
-                setStoredGeminiKey(e.target.value);
-              }}
-              className="w-full bg-black/60 border border-purple-700/60 rounded-lg px-2.5 py-1.5 text-xs text-purple-200 placeholder:text-zinc-600 focus:outline-none focus:border-purple-400"
-            />
+
+            {/* Provider Switcher Tabs */}
+            <div className="grid grid-cols-2 gap-1.5 bg-black/60 p-1 rounded-lg border border-zinc-700">
+              <button
+                type="button"
+                onClick={() => handleProviderChange('deepseek')}
+                className={`py-1 text-xs font-tech rounded-md transition flex items-center justify-center space-x-1 ${
+                  provider === 'deepseek'
+                    ? 'bg-blue-600 text-white font-bold shadow'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span>⚡ DeepSeek</span>
+                <span className="text-[9px] text-blue-200 bg-blue-900/60 px-1 rounded">国内推荐</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleProviderChange('gemini')}
+                className={`py-1 text-xs font-tech rounded-md transition flex items-center justify-center space-x-1 ${
+                  provider === 'gemini'
+                    ? 'bg-purple-600 text-white font-bold shadow'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span>✨ Gemini</span>
+                <span className="text-[9px] text-purple-200 bg-purple-900/60 px-1 rounded">海外/代理</span>
+              </button>
+            </div>
+
+            {/* Key Input per Provider */}
+            {provider === 'deepseek' ? (
+              <div className="space-y-1">
+                <p className="text-[10px] text-zinc-400">
+                  使用 DeepSeek 官方多模态模型（支持浏览器直接调用，低延迟毫秒级响应）：
+                </p>
+                <input
+                  type="password"
+                  placeholder="粘贴 DeepSeek API Key (sk-...)"
+                  value={deepSeekKey}
+                  onChange={(e) => {
+                    setDeepSeekKey(e.target.value);
+                    setStoredDeepSeekKey(e.target.value);
+                  }}
+                  className="w-full bg-black/70 border border-blue-600/60 rounded-lg px-2.5 py-1.5 text-xs text-blue-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-400"
+                />
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-[10px] text-zinc-400">
+                  使用 Google Gemini 3.6 Flash 模型（海外网络直连或配合科学网络）：
+                </p>
+                <input
+                  type="password"
+                  placeholder="粘贴 Google AI Studio API Key..."
+                  value={geminiKey}
+                  onChange={(e) => {
+                    setGeminiKey(e.target.value);
+                    setStoredGeminiKey(e.target.value);
+                  }}
+                  className="w-full bg-black/70 border border-purple-600/60 rounded-lg px-2.5 py-1.5 text-xs text-purple-200 placeholder:text-zinc-600 focus:outline-none focus:border-purple-400"
+                />
+              </div>
+            )}
           </div>
         </div>
 

@@ -15,7 +15,13 @@ import { PokedexBook } from './PokedexBook';
 import { ScanNotFound } from './ScanNotFound';
 import { LANModal } from './LANModal';
 import { ScanAnalyzingOverlay } from './ScanAnalyzingOverlay';
-import { detectPokemonFromImage, getStoredGeminiKey, type DetectionResult } from '../services/detector';
+import {
+  detectPokemonFromImage,
+  getStoredGeminiKey,
+  getStoredDeepSeekKey,
+  getStoredAiProvider,
+  type DetectionResult
+} from '../services/detector';
 import {
   isSoundMuted,
   toggleSoundMuted,
@@ -271,7 +277,12 @@ export const PokedexChassis: React.FC = () => {
               <ScanAnalyzingOverlay
                 imageSrc={frozenImage}
                 onCancel={handleResetScanner}
-                isAiActive={!!getStoredGeminiKey()}
+                isAiActive={
+                  getStoredAiProvider() === 'deepseek'
+                    ? !!getStoredDeepSeekKey()
+                    : !!getStoredGeminiKey()
+                }
+                provider={getStoredAiProvider()}
               />
             ) : scanState === 'silhouette' || scanState === 'revealed' ? (
               targetPokemon && (

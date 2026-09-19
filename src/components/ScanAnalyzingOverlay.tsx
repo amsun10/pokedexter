@@ -5,12 +5,14 @@ interface ScanAnalyzingOverlayProps {
   imageSrc: string;
   onCancel: () => void;
   isAiActive: boolean;
+  provider?: 'deepseek' | 'gemini' | 'local';
 }
 
 export const ScanAnalyzingOverlay: React.FC<ScanAnalyzingOverlayProps> = ({
   imageSrc,
   onCancel,
   isAiActive,
+  provider = 'deepseek',
 }) => {
   return (
     <div className="relative w-full h-full bg-black overflow-hidden rounded-xl flex items-center justify-center border-4 border-cyan-500/60 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
@@ -78,7 +80,12 @@ export const ScanAnalyzingOverlay: React.FC<ScanAnalyzingOverlayProps> = ({
       <div className="absolute top-3 inset-x-3 flex items-center justify-between z-30 pointer-events-auto">
         {/* Left Status */}
         <div className="bg-black/75 backdrop-blur-md border border-cyan-500/50 rounded-lg px-2.5 py-1 text-[11px] font-mono-tech text-cyan-300 flex items-center space-x-1.5 shadow-md">
-          {isAiActive ? (
+          {isAiActive && provider === 'deepseek' ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+              <span className="font-bold text-blue-300">DEEPSEEK VISION</span>
+            </>
+          ) : isAiActive && provider === 'gemini' ? (
             <>
               <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
               <span className="font-bold text-purple-200">GEMINI VISION</span>
