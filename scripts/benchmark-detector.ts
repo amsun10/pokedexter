@@ -3,7 +3,7 @@
  * Tests accuracy, recall, and false positive rejection across all 151 Gen 1 Pokemon color families.
  */
 
-import { detectPokemonFromImage, analyzeCanvasColors } from '../src/services/detector.ts';
+import { detectPokemonByLocalHeuristics, analyzeCanvasColors } from '../src/services/detector.ts';
 import { POKEMON_LIST, getPokemonById } from '../src/data/pokemonList.ts';
 
 // Lightweight pure-JS Mock Canvas for Node.js
@@ -591,7 +591,7 @@ async function runBenchmark() {
 
   for (const tc of testCases) {
     const canvas = tc.generateCanvas();
-    const result = await detectPokemonFromImage(canvas as any);
+    const result = detectPokemonByLocalHeuristics(canvas as any);
 
     let isPass = false;
     let detailMessage = '';

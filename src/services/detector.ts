@@ -318,52 +318,43 @@ export function analyzeCanvasColors(canvas: HTMLCanvasElement): ColorAnalysis {
 }
 
 /**
- * Smart heuristic classifier with distinct foreground color discrimination
- * Returns null if no known Pokémon features are detected
+ * Direct AI Pokemon Detection (Strictly Independent DeepSeek or Gemini)
+ * Completely removed fallback mechanisms:
+ * - No cross-AI fallback (DeepSeek does NOT fallback to Gemini, Gemini does NOT fallback to DeepSeek)
+ * - No local rule/color matching fallback
+ * - If not recognized, returns null immediately
  */
 export async function detectPokemonFromImage(
   canvas: HTMLCanvasElement,
   apiKey?: string
 ): Promise<DetectionResult | null> {
   const provider = getStoredAiProvider();
-  const dsKey = getStoredDeepSeekKey();
-  const geminiKey = (apiKey || '').trim() || getStoredGeminiKey();
 
-  // Try active provider first
-  if (provider === 'deepseek' && dsKey.length > 10) {
-    try {
-      const dsResult = await callDeepSeekVisionAPI(canvas, dsKey);
-      if (dsResult !== undefined) {
-        return dsResult;
-      }
-    } catch (e) {
-      console.warn('DeepSeek Vision API error, attempting fallback:', e);
+  if (provider === 'deepseek') {
+    const dsKey = getStoredDeepSeekKey();
+    if (!dsKey || dsKey.trim().length < 5) {
+      console.warn('DeepSeek API Key is not configured');
+      return null;
     }
-  } else if (provider === 'gemini' && geminiKey.length > 10) {
-    try {
-      const geminiResult = await callGeminiVisionAPI(canvas, geminiKey);
-      if (geminiResult !== undefined) {
-        return geminiResult;
-      }
-    } catch (e) {
-      console.warn('Gemini Vision API error, attempting fallback:', e);
-    }
+    return await callDeepSeekVisionAPI(canvas, dsKey);
   }
 
-  // Cross-fallback if the other key is available
-  if (provider === 'deepseek' && geminiKey.length > 10) {
-    try {
-      const geminiResult = await callGeminiVisionAPI(canvas, geminiKey);
-      if (geminiResult !== undefined) return geminiResult;
-    } catch {}
-  } else if (provider === 'gemini' && dsKey.length > 10) {
-    try {
-      const dsResult = await callDeepSeekVisionAPI(canvas, dsKey);
-      if (dsResult !== undefined) return dsResult;
-    } catch {}
+  if (provider === 'gemini') {
+    const geminiKey = (apiKey || '').trim() || getStoredGeminiKey();
+    if (!geminiKey || geminiKey.trim().length < 5) {
+      console.warn('Gemini API Key is not configured');
+      return null;
+    }
+    return await callGeminiVisionAPI(canvas, geminiKey);
   }
 
-  // Local color & shape heuristic classifier
+  return null;
+}
+
+/**
+ * Offline Heuristic Classifier for local testing / benchmarks
+ */
+export function detectPokemonByLocalHeuristics(canvas: HTMLCanvasElement): DetectionResult | null {
   const colorData = analyzeCanvasColors(canvas);
   const {
     brightness,
@@ -557,29 +548,39 @@ function getOptimizedBase64(canvas: HTMLCanvasElement, maxDim: number = 512): st
 }
 
 /**
- * Optional: Direct Gemini Multimodal Vision API call
+ * Direct Gemini Multimodal Vision API call
+ * Fast, independent request with 6.5s timeout. Returns null immediately if not recognized or error.
  */
 async function callGeminiVisionAPI(
   canvas: HTMLCanvasElement,
   apiKey: string
-): Promise<DetectionResult | null | undefined> {
+): Promise<DetectionResult | null> {
   const base64Data = getOptimizedBase64(canvas, 512);
-  
+
   const prompt = `You are a Pokemon Pokedex scanner. Look at this image and identify which Gen 1 Pokemon (#1 to #151) is present (such as plush toy, card, drawing, figure).
 Return ONLY valid JSON with no markdown formatting:
 If a Pokemon is detected: {"found": true, "pokemonId": number between 1 and 151, "confidence": number between 70 and 99}
-If NO Pokemon is in the image (e.g. random furniture, person, keyboard, wall, coffee mug): {"found": false}`;
+If NO Pokemon is in the image: {"found": false}`;
 
-  const candidateModels = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
-  
+  const candidateModels = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+
   for (const model of candidateModels) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6500);
+
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
+            generationConfig: {
+              maxOutputTokens: 60,
+              temperature: 0.1,
+              responseMimeType: 'application/json'
+            },
             contents: [{
               parts: [
                 { text: prompt },
@@ -590,19 +591,26 @@ If NO Pokemon is in the image (e.g. random furniture, person, keyboard, wall, co
         }
       );
 
-      if (!response.ok) continue;
+      clearTimeout(timer);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          continue; // Try secondary model name
+        }
+        console.warn(`Gemini API returned status ${response.status}`);
+        return null;
+      }
 
       const data = await response.json();
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) continue;
+      if (!text) return null;
 
-      // Extract JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) continue;
+      if (!jsonMatch) return null;
 
       const parsed = JSON.parse(jsonMatch[0]);
-      if (parsed.found === false) {
-        return null; // Explicitly no Pokemon found
+      if (!parsed || parsed.found === false) {
+        return null; // Fast return: explicitly not a Pokemon
       }
 
       const pId = Number(parsed.pokemonId);
@@ -615,31 +623,38 @@ If NO Pokemon is in the image (e.g. random furniture, person, keyboard, wall, co
           source: 'camera'
         };
       }
-    } catch {
-      continue;
+      return null;
+    } catch (e) {
+      clearTimeout(timer);
+      console.warn('Gemini vision request failed or timed out:', e);
+      return null;
     }
   }
 
-  return undefined;
+  return null;
 }
 
 /**
- * Direct DeepSeek Multimodal Vision API call (using deepseek-flash / deepseek-v4-flash-vision-exp)
+ * Direct DeepSeek Multimodal Vision API call
+ * Fast, independent request with 6.5s timeout. Returns null immediately if not recognized or error.
  */
 async function callDeepSeekVisionAPI(
   canvas: HTMLCanvasElement,
   apiKey: string
-): Promise<DetectionResult | null | undefined> {
+): Promise<DetectionResult | null> {
   const base64Data = getOptimizedBase64(canvas, 512);
 
   const prompt = `You are a Pokemon Pokedex scanner. Look at this image and identify which Gen 1 Pokemon (#1 to #151) is present (such as plush toy, card, drawing, figure).
 Return ONLY valid JSON with no markdown formatting:
 If a Pokemon is detected: {"found": true, "pokemonId": number between 1 and 151, "confidence": number between 70 and 99}
-If NO Pokemon is in the image (e.g. random furniture, person, keyboard, wall, coffee mug): {"found": false}`;
+If NO Pokemon is in the image: {"found": false}`;
 
   const candidateModels = ['deepseek-flash', 'deepseek-v4-flash-vision-exp'];
 
   for (const model of candidateModels) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6500);
+
     try {
       const response = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
@@ -647,8 +662,11 @@ If NO Pokemon is in the image (e.g. random furniture, person, keyboard, wall, co
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
+        signal: controller.signal,
         body: JSON.stringify({
           model,
+          max_tokens: 60,
+          temperature: 0.1,
           messages: [
             {
               role: 'user',
@@ -664,18 +682,26 @@ If NO Pokemon is in the image (e.g. random furniture, person, keyboard, wall, co
         })
       });
 
-      if (!response.ok) continue;
+      clearTimeout(timer);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          continue; // Try secondary model name
+        }
+        console.warn(`DeepSeek API returned status ${response.status}`);
+        return null;
+      }
 
       const data = await response.json();
       const text = data?.choices?.[0]?.message?.content;
-      if (!text) continue;
+      if (!text) return null;
 
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) continue;
+      if (!jsonMatch) return null;
 
       const parsed = JSON.parse(jsonMatch[0]);
-      if (parsed.found === false) {
-        return null;
+      if (!parsed || parsed.found === false) {
+        return null; // Fast return: explicitly not a Pokemon
       }
 
       const pId = Number(parsed.pokemonId);
@@ -688,11 +714,14 @@ If NO Pokemon is in the image (e.g. random furniture, person, keyboard, wall, co
           source: 'camera'
         };
       }
-    } catch {
-      continue;
+      return null;
+    } catch (e) {
+      clearTimeout(timer);
+      console.warn('DeepSeek vision request failed or timed out:', e);
+      return null;
     }
   }
 
-  return undefined;
+  return null;
 }
 

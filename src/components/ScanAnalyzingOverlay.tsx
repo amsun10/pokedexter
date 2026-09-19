@@ -66,7 +66,11 @@ export const ScanAnalyzingOverlay: React.FC<ScanAnalyzingOverlayProps> = ({
               <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping inline-block" />
               <Cpu className="w-3.5 h-3.5 text-cyan-300 animate-spin" style={{ animationDuration: '4s' }} />
               <span className="text-xs font-tech font-bold text-cyan-200 tracking-wider">
-                {isAiActive ? 'AI 多模态神经识别中...' : '图鉴光学特征比对中...'}
+                {isAiActive
+                  ? provider === 'deepseek'
+                    ? 'DeepSeek 神经视觉识别中...'
+                    : 'Gemini 神经视觉识别中...'
+                  : '请先配置 API Key'}
               </span>
             </div>
             <span className="text-[9px] font-mono-tech text-cyan-400/80 tracking-widest uppercase">
@@ -80,20 +84,15 @@ export const ScanAnalyzingOverlay: React.FC<ScanAnalyzingOverlayProps> = ({
       <div className="absolute top-3 inset-x-3 flex items-center justify-between z-30 pointer-events-auto">
         {/* Left Status */}
         <div className="bg-black/75 backdrop-blur-md border border-cyan-500/50 rounded-lg px-2.5 py-1 text-[11px] font-mono-tech text-cyan-300 flex items-center space-x-1.5 shadow-md">
-          {isAiActive && provider === 'deepseek' ? (
+          {provider === 'deepseek' ? (
             <>
-              <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+              <span className={`w-2 h-2 rounded-full ${isAiActive ? 'bg-blue-400 animate-ping' : 'bg-zinc-500'}`} />
               <span className="font-bold text-blue-300">DEEPSEEK VISION</span>
-            </>
-          ) : isAiActive && provider === 'gemini' ? (
-            <>
-              <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-              <span className="font-bold text-purple-200">GEMINI VISION</span>
             </>
           ) : (
             <>
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-              <span>LOCAL MATRIX</span>
+              <Sparkles className={`w-3.5 h-3.5 ${isAiActive ? 'text-purple-400 animate-pulse' : 'text-zinc-500'}`} />
+              <span className="font-bold text-purple-200">GEMINI VISION</span>
             </>
           )}
         </div>
