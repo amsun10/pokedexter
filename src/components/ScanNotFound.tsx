@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Search, BookOpen, Volume2, Sparkles, Compass } from 'lucide-react';
-import { playButtonClick, speakNotFoundMessage } from '../services/soundEffects';
+import { playButtonClick, speakNotFoundMessage, stopSpeaking } from '../services/soundEffects';
 
 interface ScanNotFoundProps {
   onRetry: () => void;
@@ -13,6 +13,13 @@ export const ScanNotFound: React.FC<ScanNotFoundProps> = ({
   onOpenBook,
   onSpeakingChange,
 }) => {
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+      onSpeakingChange?.(false);
+    };
+  }, [onSpeakingChange]);
+
   const handleReplayVoice = () => {
     playButtonClick();
     speakNotFoundMessage(onSpeakingChange);
@@ -93,6 +100,8 @@ export const ScanNotFound: React.FC<ScanNotFoundProps> = ({
       <div className="w-full flex items-center space-x-2 z-10 pt-1.5 border-t border-indigo-800/40">
         <button
           onClick={() => {
+            stopSpeaking();
+            onSpeakingChange?.(false);
             playButtonClick();
             onRetry();
           }}
@@ -104,6 +113,8 @@ export const ScanNotFound: React.FC<ScanNotFoundProps> = ({
 
         <button
           onClick={() => {
+            stopSpeaking();
+            onSpeakingChange?.(false);
             playButtonClick();
             onOpenBook();
           }}

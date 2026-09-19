@@ -386,9 +386,23 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
 }
 
 let currentSpeechId = 0;
+let currentSpeakingCallback: ((isSpeaking: boolean) => void) | null = null;
+
+export function setSpeakingCallback(callback: ((isSpeaking: boolean) => void) | null) {
+  currentSpeakingCallback = callback;
+}
 
 export function stopSpeaking() {
   currentSpeechId++;
+
+  if (currentSpeakingCallback) {
+    try {
+      currentSpeakingCallback(false);
+    } catch {
+      // ignore
+    }
+    currentSpeakingCallback = null;
+  }
 
   if (ttsAudio) {
     try {
@@ -429,6 +443,9 @@ export function speakPokemonIntro(
   }
 
   stopSpeaking();
+  if (onSpeakingChange) {
+    currentSpeakingCallback = onSpeakingChange;
+  }
   const speechId = currentSpeechId;
 
   const formattedId = String(pokemon.id).padStart(3, '0');
@@ -536,6 +553,9 @@ export function speakNotFoundMessage(onSpeakingChange?: (isSpeaking: boolean) =>
   }
 
   stopSpeaking();
+  if (onSpeakingChange) {
+    currentSpeakingCallback = onSpeakingChange;
+  }
   const speechId = currentSpeechId;
   const speechText = '哎呀，宝可梦悄悄躲起来啦！快把玩偶靠近一点，我们再找找看吧！';
 

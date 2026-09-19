@@ -88,6 +88,7 @@ export const WhosThatPokemon: React.FC<WhosThatPokemonProps> = ({
 
     return () => {
       stopSpeaking();
+      onSpeakingChange(false);
       if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
     };
   }, [isRevealed, pokemon, onSpeakingChange]);

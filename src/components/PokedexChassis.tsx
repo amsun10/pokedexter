@@ -55,6 +55,8 @@ export const PokedexChassis: React.FC = () => {
   const handleStartScan = () => {
     if (scanState === 'scanning') return;
 
+    stopSpeaking();
+    setIsSpeaking(false);
     unlockAudioAndSpeech();
     playButtonClick();
     playScanSound();
@@ -105,6 +107,7 @@ export const PokedexChassis: React.FC = () => {
   // From Book mode to details
   const handleBookSelectPokemon = (pokemon: Pokemon) => {
     stopSpeaking();
+    setIsSpeaking(false);
     setTargetPokemon(pokemon);
     setActiveTab('detector');
     setScanState('revealed');
@@ -113,6 +116,7 @@ export const PokedexChassis: React.FC = () => {
   // Reset back to live camera
   const handleResetScanner = () => {
     stopSpeaking();
+    setIsSpeaking(false);
     playButtonClick();
     setFrozenImage(null);
     setScanState('idle');
@@ -120,14 +124,14 @@ export const PokedexChassis: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-md sm:max-w-lg mx-auto flex flex-col items-center my-auto">
+    <div className="w-full max-w-md sm:max-w-lg mx-auto flex flex-col items-center h-[100dvh] sm:h-auto sm:my-auto">
       {/* Outer Kanto Pokedex Shell */}
-      <div className="w-full bg-gradient-to-b from-red-600 via-red-600 to-red-700 rounded-3xl p-3 sm:p-4 border-4 border-red-800 shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_4px_6px_rgba(255,255,255,0.4)] flex flex-col justify-between relative overflow-hidden">
+      <div className="w-full h-full sm:h-auto bg-gradient-to-b from-red-600 via-red-600 to-red-700 rounded-none sm:rounded-3xl p-3 sm:p-4 pt-[max(env(safe-area-inset-top),12px)] sm:pt-4 pb-[max(env(safe-area-inset-bottom),12px)] sm:pb-4 border-0 sm:border-4 border-red-800 shadow-none sm:shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_4px_6px_rgba(255,255,255,0.4)] flex flex-col justify-between relative overflow-hidden">
         {/* Subtle bevel line highlighting top lid */}
         <div className="absolute top-0 inset-x-8 h-1 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
 
         {/* ===================== TOP HEADER ===================== */}
-        <div className="flex items-center justify-between pb-3 border-b-2 border-red-900/60 relative">
+        <div className="flex items-center justify-between pb-2 sm:pb-3 border-b-2 border-red-900/60 relative flex-shrink-0">
           {/* Big Blue Optical Lens (Iconic) */}
           <div className="flex items-center space-x-3">
             <div className="relative p-1.5 rounded-full bg-gradient-to-b from-zinc-200 to-zinc-400 shadow-md">
@@ -234,6 +238,7 @@ export const PokedexChassis: React.FC = () => {
               onClick={() => {
                 playButtonClick();
                 stopSpeaking();
+                setIsSpeaking(false);
                 setActiveTab(activeTab === 'detector' ? 'book' : 'detector');
               }}
               title={activeTab === 'detector' ? '查看151图鉴' : '返回探测器'}
@@ -260,15 +265,15 @@ export const PokedexChassis: React.FC = () => {
         </div>
 
         {/* ===================== SCREEN HOUSING ===================== */}
-        <div className="my-3 bg-zinc-300 rounded-2xl p-3 sm:p-4 border-4 border-zinc-500 shadow-[inset_0_4px_8px_rgba(0,0,0,0.5),0_6px_12px_rgba(0,0,0,0.3)]">
+        <div className="my-2 sm:my-3 bg-zinc-300 rounded-2xl p-2.5 sm:p-4 border-4 border-zinc-500 shadow-[inset_0_4px_8px_rgba(0,0,0,0.5),0_6px_12px_rgba(0,0,0,0.3)] flex-1 min-h-0 flex flex-col justify-between">
           {/* Top Two Speaker / Mic Dots */}
-          <div className="flex justify-center space-x-4 mb-2">
+          <div className="flex justify-center space-x-4 mb-1.5 sm:mb-2 flex-shrink-0">
             <div className="w-2.5 h-2.5 rounded-full bg-red-600 border border-zinc-600" />
             <div className="w-2.5 h-2.5 rounded-full bg-red-600 border border-zinc-600" />
           </div>
 
           {/* Screen Content Container (CRT display) */}
-          <div className="w-full h-[365px] sm:h-[410px] rounded-xl overflow-hidden shadow-2xl relative">
+          <div className="w-full flex-1 min-h-0 sm:h-[410px] rounded-xl overflow-hidden shadow-2xl relative">
             {activeTab === 'book' ? (
               <PokedexBook
                 onSelectPokemon={handleBookSelectPokemon}
@@ -297,7 +302,11 @@ export const PokedexChassis: React.FC = () => {
             ) : scanState === 'error' ? (
               <ScanNotFound
                 onRetry={handleResetScanner}
-                onOpenBook={() => setActiveTab('book')}
+                onOpenBook={() => {
+                  stopSpeaking();
+                  setIsSpeaking(false);
+                  setActiveTab('book');
+                }}
                 onSpeakingChange={setIsSpeaking}
               />
             ) : (
@@ -309,7 +318,7 @@ export const PokedexChassis: React.FC = () => {
           </div>
 
           {/* Bottom Screen Vent Lines & Speaker Indicator */}
-          <div className="flex items-center justify-between mt-2.5 px-2">
+          <div className="flex items-center justify-between mt-1.5 sm:mt-2.5 px-2 flex-shrink-0">
             <div className="w-3.5 h-3.5 rounded-full bg-red-600 border border-zinc-600" />
             <div className="flex space-x-1.5">
               <div className="w-8 h-1 bg-zinc-600 rounded" />
@@ -320,7 +329,7 @@ export const PokedexChassis: React.FC = () => {
         </div>
 
         {/* ===================== CONTROL DECK ===================== */}
-        <div className="mt-3 bg-red-700/80 rounded-2xl p-2.5 sm:p-3 border border-red-800 shadow-inner">
+        <div className="mt-1 sm:mt-3 bg-red-700/80 rounded-2xl p-2 sm:p-3 border border-red-800 shadow-inner flex-shrink-0">
           <div className="flex items-center justify-between gap-2.5 sm:gap-3">
             {/* Left Action: Reset to Camera */}
             <button
