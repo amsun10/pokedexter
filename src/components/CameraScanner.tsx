@@ -18,10 +18,12 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({
 
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [hasCamera, setHasCamera] = useState<boolean>(true);
+  const [isCameraReady, setIsCameraReady] = useState<boolean>(false);
 
   // Initialize camera
   useEffect(() => {
     let stream: MediaStream | null = null;
+    setIsCameraReady(false);
 
     async function startCamera() {
       try {
@@ -40,7 +42,16 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({
         });
 
         if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+          const video = videoRef.current;
+          video.srcObject = stream;
+          video.setAttribute('playsinline', 'true');
+          video.setAttribute('webkit-playsinline', 'true');
+          try {
+            await video.play();
+            setIsCameraReady(true);
+          } catch (e) {
+            console.warn('Camera video.play() awaiting user interaction or metadata:', e);
+          }
         }
         setHasCamera(true);
       } catch (err: unknown) {
@@ -60,6 +71,7 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({
 
   // Flip camera between front and rear
   const toggleFacingMode = () => {
+    setIsCameraReady(false);
     setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
   };
 
@@ -125,13 +137,44 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({
 
       {/* Video View or Standby Camera Launcher */}
       {hasCamera ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover"
-        />
+        <>
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            controls={false}
+            disablePictureInPicture
+            onLoadedMetadata={() => {
+              videoRef.current?.play().catch(() => {});
+            }}
+            onPlaying={() => {
+              setIsCameraReady(true);
+            }}
+            className={`w-full h-full object-cover transition-opacity duration-300 ${
+              isCameraReady ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+
+          {/* Camera Initializing Radar Placeholder to prevent iOS Safari pause overlay */}
+          {!isCameraReady && (
+            <div className="absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center space-y-3 z-10 pointer-events-none">
+              <div className="relative w-16 h-16 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border-2 border-emerald-500/20 animate-ping" />
+                <div className="w-12 h-12 rounded-full border-2 border-emerald-400/40 border-t-emerald-400 animate-spin" />
+                <Camera className="w-5 h-5 text-emerald-400 absolute" />
+              </div>
+              <div className="text-center space-y-0.5">
+                <p className="text-xs font-tech font-bold text-emerald-400 tracking-wider">
+                  镜头启动校准中...
+                </p>
+                <p className="text-[10px] font-mono-tech text-zinc-500 tracking-widest uppercase">
+                  CALIBRATING OPTICAL SENSOR
+                </p>
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         <div className="flex flex-col items-center justify-center p-6 text-center space-y-3 z-10">
           <div className="w-14 h-14 rounded-full bg-emerald-500/10 border-2 border-emerald-400/60 flex items-center justify-center shadow-[0_0_20px_rgba(52,211,153,0.3)] animate-pulse">
