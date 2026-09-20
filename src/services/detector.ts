@@ -38,7 +38,7 @@ export type AiProvider = 'deepseek' | 'gemini';
 
 export function getStoredDeepSeekKey(): string {
   try {
-    return localStorage.getItem('pokedex_deepseek_key') || '';
+    return (localStorage.getItem('pokedex_deepseek_key') || '').trim();
   } catch {
     return '';
   }
@@ -54,7 +54,7 @@ export function setStoredDeepSeekKey(key: string): void {
 
 export function getStoredGeminiKey(): string {
   try {
-    return localStorage.getItem('pokedex_gemini_key') || '';
+    return (localStorage.getItem('pokedex_gemini_key') || '').trim();
   } catch {
     return '';
   }
@@ -566,7 +566,7 @@ If NO Pokemon is in the image: {"found": false}`;
 
   for (const model of candidateModels) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6500);
+    const timer = setTimeout(() => controller.abort(), 10000);
 
     try {
       const response = await fetch(
@@ -577,7 +577,7 @@ If NO Pokemon is in the image: {"found": false}`;
           signal: controller.signal,
           body: JSON.stringify({
             generationConfig: {
-              maxOutputTokens: 60,
+              maxOutputTokens: 256,
               temperature: 0.1,
               responseMimeType: 'application/json'
             },
@@ -636,7 +636,7 @@ If NO Pokemon is in the image: {"found": false}`;
 
 /**
  * Direct DeepSeek Multimodal Vision API call
- * Fast, independent request with 6.5s timeout. Returns null immediately if not recognized or error.
+ * Fast, independent request with 10s timeout and 512 token budget for reasoning models.
  */
 async function callDeepSeekVisionAPI(
   canvas: HTMLCanvasElement,
@@ -653,7 +653,7 @@ If NO Pokemon is in the image: {"found": false}`;
 
   for (const model of candidateModels) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6500);
+    const timer = setTimeout(() => controller.abort(), 10000);
 
     try {
       const response = await fetch('https://api.deepseek.com/chat/completions', {
@@ -665,8 +665,7 @@ If NO Pokemon is in the image: {"found": false}`;
         signal: controller.signal,
         body: JSON.stringify({
           model,
-          max_tokens: 60,
-          temperature: 0.1,
+          max_tokens: 512,
           messages: [
             {
               role: 'user',
@@ -693,7 +692,8 @@ If NO Pokemon is in the image: {"found": false}`;
       }
 
       const data = await response.json();
-      const text = data?.choices?.[0]?.message?.content;
+      const message = data?.choices?.[0]?.message;
+      const text = message?.content || message?.reasoning_content;
       if (!text) return null;
 
       const jsonMatch = text.match(/\{[\s\S]*\}/);

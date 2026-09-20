@@ -55,6 +55,14 @@ export const PokedexChassis: React.FC = () => {
   const handleStartScan = () => {
     if (scanState === 'scanning') return;
 
+    const provider = getStoredAiProvider();
+    const hasKey = provider === 'deepseek' ? !!getStoredDeepSeekKey() : !!getStoredGeminiKey();
+    if (!hasKey) {
+      playButtonClick();
+      setShowLANModal(true);
+      return;
+    }
+
     stopSpeaking();
     setIsSpeaking(false);
     unlockAudioAndSpeech();
